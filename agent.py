@@ -65,6 +65,7 @@ class Agent(object):
         action = action[0]
         encoded_state = encoded_state[0]
         action = self.exploration.select_action(self.t, action, self.num_actions)
+        print(self._q_values(normalized_obs))
         value = self._q_values(normalized_obs)[0][action]
 
         if self.t > self.learning_starts and self.t % self.train_freq == 0:
@@ -92,11 +93,13 @@ class Agent(object):
         self.reward_cache.append(reward)
         self.state_cache.append(self.last_obs)
         self.action_cache.append(self.last_action)
+        self.encoded_state_cache.append(self.last_encoded_state)
         while len(self.reward_cache) > 0:
             self.append_experience(0)
-            self.reward_cache.popLeft()
-            self.state_cache.popLeft()
-            self.action_cache.popLeft()
+            self.reward_cache.popleft()
+            self.state_cache.popleft()
+            self.action_cache.popleft()
+            self.encoded_state_cache.popleft()
         self.stop_episode()
 
     def stop_episode(self):
@@ -106,3 +109,4 @@ class Agent(object):
         self.reward_cache.clear()
         self.state_cache.clear()
         self.action_cache.clear()
+        self.encoded_state_cache.clear()

@@ -21,9 +21,9 @@ def build_train(encode, num_actions, optimizer, dnds, batch_size=32,
             q_values.append(tf.reduce_sum(normalized_weights * values, axis=1))
         q_t = tf.transpose(q_values)
 
-        q_t_selected = tf.reduce_sum(q_t * tf.one_hot(act_t_ph, num_actions), 1)
+        q_t_selected = tf.reduce_sum(q_t * tf.one_hot(act_t_ph, num_actions), axis=1)
 
-        errors = tf.nn.l2_loss(target_values - q_t_selected)
+        errors = tf.reduce_sum(tf.square(target_values - q_t_selected))
 
         gradients = optimizer.compute_gradients(errors, var_list=encode_vars)
         for i, (grad, var) in enumerate(gradients):

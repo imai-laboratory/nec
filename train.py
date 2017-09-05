@@ -53,7 +53,7 @@ def main():
     sess = tf.Session()
     sess.__enter__()
 
-    agent = Agent(model, n_actions, replay_buffer, explorer, learning_starts=10000)
+    agent = Agent(model, n_actions, replay_buffer, explorer, learning_starts=1000)
 
     initialize()
 
@@ -90,7 +90,7 @@ def main():
             if done:
                 summary, _ = sess.run([merged, reward_summary], feed_dict={reward_summary: sum_of_rewards})
                 train_writer.add_summary(summary, global_step)
-                agent.stop_episode_and_train(np.transpose(states, [1, 2, 0]), clipped_reward, done=done)
+                agent.stop_episode_and_train(np.transpose(states, [1, 2, 0]), clipped_reward)
                 break
 
             action = actions[agent.act_and_train(np.transpose(states, [1, 2, 0]), clipped_reward)]
