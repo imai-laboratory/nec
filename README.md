@@ -11,3 +11,6 @@ https://arxiv.org/abs/1703.01988
 
 ## TODO
 - [ ] batch write of DND
+
+## issue
+- low GPU usage because of using CPU to query DND
