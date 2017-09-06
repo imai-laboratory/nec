@@ -53,7 +53,7 @@ def main():
     sess = tf.Session()
     sess.__enter__()
 
-    agent = Agent(model, n_actions, replay_buffer, explorer, learning_starts=1000)
+    agent = Agent(model, n_actions, replay_buffer, explorer, learning_starts=10000)
 
     initialize()
 
