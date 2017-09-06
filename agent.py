@@ -65,7 +65,6 @@ class Agent(object):
         action = action[0]
         encoded_state = encoded_state[0]
         action = self.exploration.select_action(self.t, action, self.num_actions)
-        print(self._q_values(normalized_obs))
         value = self._q_values(normalized_obs)[0][action]
 
         if self.t > self.learning_starts and self.t % self.train_freq == 0:

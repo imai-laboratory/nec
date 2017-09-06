@@ -17,7 +17,7 @@ def build_train(encode, num_actions, optimizer, dnds, batch_size=32,
             square_diff = tf.square(keys - tf.expand_dims(encoded_state, 1))
             distances = tf.reduce_sum(square_diff, axis=2) + 1e-3
             weights = 1 / distances
-            normalized_weights = weights / tf.reduce_sum(weights, axis=1)
+            normalized_weights = weights / tf.reduce_sum(weights, axis=1, keep_dims=True)
             q_values.append(tf.reduce_sum(normalized_weights * values, axis=1))
         q_t = tf.transpose(q_values)
 
