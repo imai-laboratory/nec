@@ -5,7 +5,7 @@ from collections import deque
 
 
 class DND:
-    def __init__(self, capacity=5 * 50^5, p=50, lr=0.1):
+    def __init__(self, capacity=5 * 10 ** 5, p=50, lr=0.1):
         self.capacity = capacity
         self.p = p
         self.lr = lr
