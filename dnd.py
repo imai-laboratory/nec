@@ -29,7 +29,7 @@ class DND:
             tree = KDTree(keys, leaf_size=50)
             distances, indices = tree.query(np.array([encoded_state], dtype=np.float32), k=k)
             queried_keys[i] = keys[indices]
-            queried_values[i] = values[indices].T[-1]
+            queried_values[i] = values[indices][-1]
             self.ages += 1
             self.ages[indices] = 0
         return queried_keys, queried_values
