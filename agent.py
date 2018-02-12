@@ -8,11 +8,12 @@ from collections import deque
 
 
 class Agent(object):
-    def __init__(self, encode, num_actions, replay_buffer, exploration, lr=2.5e-4, batch_size=32,
+    def __init__(self, encode, actions, replay_buffer, exploration, lr=2.5e-4, batch_size=32,
             train_freq=16, learning_starts=10000, gamma=0.99, n_step=100):
         self.batch_size = batch_size
         self.train_freq = train_freq
-        self.num_actions = num_actions
+        self.actions = actions
+        self.num_actions = len(actions)
         self.learning_starts = learning_starts
         self.n_step = n_step
         self.gamma = gamma
@@ -26,12 +27,12 @@ class Agent(object):
         self.action_cache = deque(maxlen=n_step - 1)
         self.encoded_state_cache = deque(maxlen=n_step - 1)
         self.dnds = []
-        for i in range(num_actions):
+        for i in range(self.num_actions):
             self.dnds.append(DND())
 
         act, train, q_values = build_graph.build_train(
             encode=encode,
-            num_actions=num_actions,
+            num_actions=self.num_actions,
             optimizer=tf.train.RMSPropOptimizer(learning_rate=lr, momentum=0.95, epsilon=1e-2),
             dnds=self.dnds,
             gamma=gamma,

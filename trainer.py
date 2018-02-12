@@ -32,9 +32,9 @@ class Trainer:
         # Summarizer
         self.reward_summary = tf.placeholder(
             tf.int32, (), name='reward_summary')
-        self.tf.summary.scalar('reward_summary', self.reward_summary)
+        tf.summary.scalar('reward_summary', self.reward_summary)
         self.merged = tf.summary.merge_all()
-        self.train_writer = tf.summary.FileWriter(self.logdir, sess.graph)
+        self.train_writer = tf.summary.FileWriter(self.log_dir, sess.graph)
 
         # Trainer global
         self.global_step = 0
@@ -71,14 +71,15 @@ class Trainer:
                     )
                     break
 
-                action = self.actions[
+                action = self.agent.actions[
                     self.agent.act_and_train(
-                        np.transpose(states, [0, 2, 0]), clipped_reward
+                        np.transpose(states, [1, 2, 0]), clipped_reward
                     )
                 ]
 
                 state, reward, done, info = self.env.step(action)
-                sum_of_rewards += self.reward_clipper(reward)
+                clipped_reward = self.reward_clipper(reward)
+                sum_of_rewards += clipped_reward
                 step += 1
 
                 if train:

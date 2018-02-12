@@ -1,6 +1,7 @@
 import tensorflow as tf
 import tensorflow.contrib.layers as layers
 
+
 def _make_cnn(convs, hiddens, inpt, num_actions, scope, reuse=None):
     ''' creates convlayers
     ARGS:
