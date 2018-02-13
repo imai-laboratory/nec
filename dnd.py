@@ -1,55 +1,203 @@
-import numpy as np
 import tensorflow as tf
-from sklearn.neighbors.kd_tree import KDTree
-from collections import deque
 
 
 class DND:
-    def __init__(self, capacity=5 * 10 ** 5, p=50, lr=0.1):
+    '''
+    TensorFlow impelementation of DND.
+    DND will be created per actions.
+    '''
+    def __init__(self, keysize=160, capacity=10 ** 5, p=10, lr=0.1):
         self.capacity = capacity
-        self.p = p
         self.lr = lr
-        self.memory_keys = []
-        self.memory_values = []
-        self.ages = np.zeros((capacity), np.int32)
+        self.p = p
+        self.keysize = keysize  # TODO: check input size
 
-    def lookup(self, h):
-        if len(self.memory_values) == 0:
-            return np.zeros((len(h), 1, len(h[0])), dtype=np.float32), np.zeros((len(h), 1), dtype=np.float32)
-        keys = np.array(self.memory_keys, dtype=np.float32)
-        values = np.array(self.memory_values, dtype=np.float32)
-        size = keys.shape[0]
-        if size < self.p:
-            k = size
-        else:
-            k = self.p
-        queried_keys = np.zeros((len(h), k, len(h[0])), dtype=np.float32)
-        queried_values = np.zeros((len(h), k), dtype=np.float32)
-        for i, encoded_state in enumerate(h):
-            tree = KDTree(keys, leaf_size=50)
-            distances, indices = tree.query(np.array([encoded_state], dtype=np.float32), k=k)
-            queried_keys[i] = keys[indices]
-            queried_values[i] = values[indices][-1]
-            self.ages += 1
-            self.ages[indices] = 0
-        return queried_keys, queried_values
+    def _init_vars(self):
+        with tf.name_scope('MEMORY_MODULE'):
+            self.curr_epsize = tf.Variable(
+                50, dtype=tf.int32
+            )
+            self.memory_keys = tf.Variable(
+                tf.zeros(
+                    [self.capacity, self.keysize], dtype=tf.float32
+                ),
+                name='KEYS'
+            )
+            self.memory_values = tf.Variable(
+                tf.zeros([self.capacity], dtype=tf.float32),
+                name='VALUES'
+            )
+            self.memory_ages = tf.Variable(
+                tf.zeros([self.capacity], dtype=tf.int32),
+                name='AGES'
+            )
 
-    def write(self, h, v):
-        keys = np.array(self.memory_keys, dtype=np.float32)
-        values = np.array(self.memory_values, dtype=np.float32)
-        if len(self.memory_keys) > 0:
-            tree = KDTree(keys, leaf_size=50)
-            distance, index = tree.query(np.array([h], dtype=np.float32))
-            if distance[0][0] == 0:
-                index = index[0][0]
-                self.memory_values[index] += self.lr * (v - self.memory_values[index])
-                return
-        if len(self.memory_values) < self.capacity:
-            self.ages[len(self.memory_values) - 1] = 0
-            self.memory_keys.append(h)
-            self.memory_values.append(v)
-        else:
-            index = np.argmin(self.ages)
-            self.memory_keys[index] = h
-            self.memory_values[index] = v
-            self.ages[index] = 0
+    def _build_network(self, readerin, hin, vin, epsize):
+        # set placeholders
+        self.writer = self._build_writer(hin, vin, epsize)
+        self.reader = self._build_reader(readerin, epsize)
+        return self.reader, self.writer
+
+    def ex_gather_2d(self, data, indices_mat):
+        # data (batch, memsize, 160)
+        shape = tf.shape(data)
+        batch_size = shape[0]
+        mem_size = tf.cast(shape[1], dtype=tf.float32)
+        flattened_data = tf.reshape(data, [-1])  # dim1
+        flatten_indices = tf.reshape(indices_mat, [-1])
+        expanded_offsets = tf.expand_dims(
+            tf.range(tf.cast(batch_size, dtype=tf.float32), dtype=tf.float32)\
+            * mem_size, 1
+        )
+        tiled_offsets = tf.tile(expanded_offsets, [1, self.p])
+        flattened_offsets = tf.reshape(tiled_offsets, [-1])  # dim1
+        gathered_data = tf.gather(
+            flattened_data, flatten_indices\
+            + tf.cast(flattened_offsets, tf.int32)
+        )
+        reshaped_data = tf.reshape(
+            gathered_data, [batch_size, self.p]
+        )
+        return reshaped_data
+
+    def ex_gather_3d(self, data, indices_mat):
+        # data (batch, memsize, 160)
+        shape = tf.shape(data)
+        batch_size = shape[0]
+        mem_size = tf.cast(shape[1], dtype=tf.float32)
+        flattened_data = tf.reshape(data, [-1, 160])  # dim1
+        flatten_indices = tf.reshape(indices_mat, [-1])
+        expanded_offsets = tf.expand_dims(
+            tf.range(tf.cast(batch_size, dtype=tf.float32),
+                     dtype=tf.float32) * mem_size, 1
+        )
+        tiled_offsets = tf.tile(expanded_offsets, [1, self.p])
+        flattened_offsets = tf.reshape(tiled_offsets, [-1])  # dim1
+        gathered_data = tf.gather(
+            flattened_data, flatten_indices\
+            + tf.cast(flattened_offsets, tf.int32)
+        )
+        reshaped_data = tf.reshape(
+            gathered_data, [batch_size, self.p, 160]
+        )
+        return reshaped_data
+
+    def _build_reader(self, h, epsize):
+        with tf.name_scope('lookup'):
+            keys = self.memory_keys[:epsize]
+            tiled_keys = tf.tile([keys], [tf.shape(h)[0], 1, 1])
+            expanded_h = tf.expand_dims(h, axis=1)
+            distances = tf.reduce_sum(
+                tf.square(
+                    tiled_keys - tf.tile(
+                        expanded_h, [1, epsize, 1]
+                    )
+                ), axis=2
+            )
+            values = self.memory_values[:epsize]
+            tiled_values = tf.tile([values], [tf.shape(h)[0], 1])
+
+            # negate distances to get the k closest keys
+            _, indices = tf.nn.top_k(-distances, k=self.p)  # indecies (?, 10)
+            # distances (?, ?) batchsize, memsize
+            # get p distances
+            hit_keys = self.ex_gather_3d(tiled_keys, indices)
+            hit_values = self.ex_gather_2d(tiled_values, indices)
+            flatten_indices = tf.reshape(indices, [-1])  # batch * self.p
+            unique_indicies, _ = tf.unique(flatten_indices)
+            update_ages = tf.group(*[
+                # increment ages
+                tf.assign(self.memory_ages, self.memory_ages + 1),
+                # reset hit ages
+                tf.scatter_update(
+                    self.memory_ages, unique_indicies,
+                    tf.zeros([self.p], dtype=tf.int32)
+                )
+                # tf.assign(hit_ages, 0)
+            ])
+        return hit_keys, hit_values, update_ages
+
+    def _build_writer(self, hins, vins, epsize):
+        i = tf.constant(0)
+        tfeps = tf.constant(epsize)
+        tfblen = tf.shape(hins)[0]  # batch length
+        tfcond = lambda i: tf.less(i, tfblen)
+        
+        tfupd = tf.add(tfeps, 1)
+        body = lambda i: tf.group(
+            *[tfupd, self.write(hins[i], vins[i], tfeps)]
+        )
+
+        while_loop = tf.while_loop(
+            tfcond, body, [i]
+        )
+        
+
+    def write(self, hin, vin, epsize):
+        with tf.name_scope('write'):
+            # memory_keys (capacity, keysize)
+            # hin (keysize) -> (capacity, keysize)  broadcasted
+            with tf.name_scope('GETDIST'):
+                distvec = self.memory_keys - hin
+                distance = tf.norm(distvec, axis=1)  # (capacity)
+                index = tf.argmin(distance, axis=0)  # scalar
+                mindist = distance[index]
+    
+            with tf.name_scope('BODY1'):
+                # check if distance is the same
+                new_value = self.lr * (vin - self.memory_values[index])
+                update_val = tf.assign(self.memory_values[index], new_value)
+    
+            with tf.name_scope('BODY2'):
+                with tf.name_scope('IF'):
+                    # If the memory is NOT FULL
+                    update_age = tf.assign(  # TODO: remove this
+                        self.memory_ages[epsize - 1], 0
+                    )
+                    key_append = tf.assign(
+                        self.memory_keys[epsize - 1], hin
+                    )
+                    val_append = tf.assign(
+                        self.memory_values[epsize - 1], vin
+                    )
+                    # inc update should be in order
+                    deps = tf.group(
+                        *[update_age, key_append, val_append]
+                    )
+    
+                    with tf.control_dependencies([deps]):
+                        grouped_appends = tf.group(
+                            tf.assign_add(
+                                self.curr_epsize, 1
+                            )
+                        )
+    
+                with tf.name_scope('ELSE'):
+                    # else if memory is FULL
+                    oldest_idx = tf.argmax(self.memory_ages)
+                    key_update = tf.assign(
+                        self.memory_keys[oldest_idx], hin
+                    )
+                    val_update = tf.assign(
+                        self.memory_values[oldest_idx], vin
+                    )
+                    grouped_updates = tf.group(
+                        *[key_update, val_update]
+                    )
+    
+            cond_dist_eq = tf.cond(
+                tf.equal(mindist, 0),
+                lambda: update_val, lambda: .0,
+                name='COND1'
+            )
+    
+            with tf.control_dependencies([cond_dist_eq]):
+                # pev operation followed by below
+                cond_capa_less = tf.cond(
+                    tf.less(epsize, self.capacity),
+                    lambda: grouped_updates, lambda: grouped_appends,
+                    name='COND2'
+                )
+            end_node = cond_capa_less
+
+        return end_node
