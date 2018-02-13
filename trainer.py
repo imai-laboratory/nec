@@ -46,7 +46,6 @@ class Trainer:
             states = np.zeros((self.update_interval, 84, 84), dtype=np.uint8)
             reward = 0
             done = False
-            clipped_reward = 0
             sum_of_rewards = 0
             step = 0
             state = self.env.reset()
@@ -55,8 +54,6 @@ class Trainer:
                 if self.render:
                     self.env.render()
 
-                state = cv2.cvtColor(state, cv2.COLOR_RGB2GRAY)
-                state = cv2.resize(state, (84, 84))
                 states = np.roll(states, 1, axis=0)
                 states[0] = state
 
@@ -67,19 +64,18 @@ class Trainer:
                     )
                     self.train_writer.add_summary(summary, self.global_step)
                     self.agent.stop_episode_and_train(
-                        np.transpose(states, [1, 2, 0]), clipped_reward
+                        np.transpose(states, [1, 2, 0]), reward
                     )
                     break
 
                 action = self.agent.actions[
                     self.agent.act_and_train(
-                        np.transpose(states, [1, 2, 0]), clipped_reward
+                        np.transpose(states, [1, 2, 0]), reward
                     )
                 ]
 
                 state, reward, done, info = self.env.step(action)
-                clipped_reward = self.reward_clipper(reward)
-                sum_of_rewards += clipped_reward
+                sum_of_rewards += reward
                 step += 1
 
                 if train:
@@ -93,18 +89,6 @@ class Trainer:
 
             if final_steps < self.global_step:
                 break
-
-    def reward_clipper(self, reward):
-        ''' clips reward (a helper function)
-        '''
-        if reward > 0:
-            clipped_reward = 1.0
-        elif reward < 0:
-            clipped_reward = -1.0
-        else:
-            clipped_reward = 0.0
-
-        return clipped_reward
 
     def save_model(self):
         ''' saves a model

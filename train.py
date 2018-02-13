@@ -11,6 +11,7 @@ from network import make_cnn
 from agent import Agent
 from trainer import Trainer
 from datetime import datetime
+from env_wrapper import EnvWrapper
 
 
 def main():
@@ -37,7 +38,15 @@ def main():
     logdir = os.path.join(os.path.dirname(__file__), 'logs/' + args.logdir)
 
     # v4 4 frames per function call
-    env = gym.make(args.env)
+    def state_preprocess(state):
+        state = cv2.cvtColor(state, cv2.COLOR_RGB2GRAY)
+        state = cv2.resize(state, (84, 84))
+        return state
+    env = EnvWrapper(
+        gym.make(args.env),
+        s_preprocess=state_preprocess,
+        r_preprocess=lambda r: np.clip(r, -1, 1)
+    )
 
     actions = get_action_space(args.env)
 
