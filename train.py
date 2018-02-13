@@ -10,31 +10,31 @@ from actions import get_action_space
 from network import make_cnn
 from agent import Agent
 from trainer import Trainer
+from datetime import datetime
 
 
 def main():
+    date = datetime.now().strftime("%Y%m%d%H%M%S")
     parser = argparse.ArgumentParser()
     parser.add_argument('--env', type=str, default='PongDeterministic-v4')
-    parser.add_argument('--outdir', type=str, default=None)
-    parser.add_argument('--logdir', type=str, default=None)
+    parser.add_argument('--outdir', type=str, default=date)
+    parser.add_argument('--logdir', type=str, default=date)
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--load', type=str, default=None)
-    parser.add_argument('--final-exploration-frames',
-                        type=int, default=10 ** 6)
+    parser.add_argument('--final-exploration-frames', type=int, default=10 ** 6)
     parser.add_argument('--final-steps', type=int, default=10 ** 7)
     parser.add_argument('--replay-start-size', type=int, default=5 * 10 ** 4)
-    parser.add_argument('--target-update-interval',
-                        type=int, default=10 ** 4)
+    parser.add_argument('--target-update-interval', type=int, default=10 ** 4)
     parser.add_argument('--update-interval', type=int, default=4)
     parser.add_argument('--render', action='store_true')
     args = parser.parse_args()
 
-    if args.outdir is None:
-        args.outdir = os.path.join(os.path.dirname(__file__), 'results')
-        if not os.path.exists(args.outdir):
-            os.makedirs(args.outdir)
-    if args.logdir is None:
-        args.logdir = os.path.join(os.path.dirname(__file__), 'logs')
+    # absolute outdir
+    outdir = os.path.join(os.path.dirname(__file__), 'results_' + args.outdir)
+    if not os.path.exists(outdir):
+        os.makedirs(outdir)
+    # absolute logdir
+    logdir = os.path.join(os.path.dirname(__file__), 'logs/' + args.logdir)
 
     # v4 4 frames per function call
     env = gym.make(args.env)
@@ -64,8 +64,15 @@ def main():
     if args.load is not None:
         saver.restore(sess, args.load)
 
-    trainer = Trainer(sess, env, agent, args.update_interval, args.render,
-                      args.outdir, args.logdir)
+    trainer = Trainer(
+        sess,
+        env,
+        agent,
+        args.update_interval,
+        args.render,
+        outdir,
+        logdir
+    )
 
     trainer.train(args.final_steps, train=True)
 

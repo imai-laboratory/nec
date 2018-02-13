@@ -26,7 +26,11 @@ def _make_cnn(convs, hiddens, inpt, num_actions, scope, reuse=None):
         with tf.variable_scope('fully_connected'):
             encode = conv_out
             for hidden in hiddens:
-                encode = layers.fully_connected(encode, num_outputs=hidden, activation_fn=None)
+                encode = layers.fully_connected(
+                    encode,
+                    num_outputs=hidden,
+                    activation_fn=None
+                )
         return encode
 
 
