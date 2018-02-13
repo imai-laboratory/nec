@@ -23,13 +23,11 @@ def build_train(encode, num_actions, optimizer, dnds, batch_size=32,
         )
 
         epsize = tf.placeholder(
-            tf.int32, [4], name='epsize'
+            tf.int32, [num_actions], name='epsize'
         )
 
         for i, dnd in enumerate(dnds):
             with tf.name_scope('DND'):
-                # BUILD GRAPH HERE
-                # TODO: implement
                 reader, writer = dnd._build_network(
                     encoded_state, hin, vin, epsize[i]
                 )
@@ -43,31 +41,13 @@ def build_train(encode, num_actions, optimizer, dnds, batch_size=32,
                     axis=2
                 )
                 k = 1.0 / (distances + 0.001)
-                weights = (
-                    k / tf.reshape(
-                        tf.reduce_sum(k, axis=1),
-                        [-1, 1]
-                    )
-                )
+                weights = (k /
+                           tf.reshape(
+                               tf.reduce_sum(k, axis=1),
+                               [-1, 1])
+                           )
                 q_values.append(tf.reduce_sum(weights * values, axis=1))
-                writs.append(
-                    writer
-                )
-
-        '''
-        for i, dnd in enumerate(dnds):
-            keys, values = tf.py_func(
-                dnd.lookup, [encoded_state], [tf.float32, tf.float32]
-            )
-            square_diff = tf.square(keys - tf.expand_dims(encoded_state, 1))
-            distances = tf.reduce_sum(square_diff, axis=2) + 1e-3
-            weights = 1 / distances
-            normalized_weights = weights / tf.reduce_sum(
-                weights, axis=1, keep_dims=True)
-
-            q_values.append(tf.reduce_sum(normalized_weights * values, axis=1))
-
-        '''
+                writs.append(writer)
 
         # get actions
         q_t = tf.transpose(q_values)
