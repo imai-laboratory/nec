@@ -7,10 +7,12 @@ https://arxiv.org/abs/1703.01988
 - TensorFlow
 - sklearn
 - opencv-python
+- gym
 - git+https://github.com/imai-laboratory/lightsaber
 
-## TODO
+## TODOs
 - [ ] batch write of DND
+- [ ] refactor
 
-## issue
+## issues
 - low GPU usage because of using CPU to query DND
