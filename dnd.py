@@ -1,4 +1,7 @@
+# import numpy as np
 import tensorflow as tf
+# from sklearn.neighbors.kd_tree import KDTree
+# from collections import deque
 
 
 class DND:
@@ -18,9 +21,7 @@ class DND:
                 50, dtype=tf.int32
             )
             self.memory_keys = tf.Variable(
-                tf.zeros(
-                    [self.capacity, self.keysize], dtype=tf.float32
-                ),
+                tf.zeros([self.capacity, self.keysize], dtype=tf.float32),
                 name='KEYS'
             )
             self.memory_values = tf.Variable(
@@ -33,8 +34,6 @@ class DND:
             )
 
     def _build_network(self, readerin, hin, vin, epsize):
-        # set placeholders
-        print('shape{}'.format(epsize))
         self.writer = self._build_writer(hin, vin, epsize)
         self.reader = self._build_reader(readerin, epsize)
         return self.reader, self.writer
@@ -66,7 +65,7 @@ class DND:
         shape = tf.shape(data)
         batch_size = shape[0]
         mem_size = tf.cast(shape[1], dtype=tf.float32)
-        flattened_data = tf.reshape(data, [-1, 160])  # dim1
+        flattened_data = tf.reshape(data, [-1, self.keysize])  # dim1
         flatten_indices = tf.reshape(indices_mat, [-1])
         expanded_offsets = tf.expand_dims(
             tf.range(tf.cast(batch_size, dtype=tf.float32),
@@ -79,7 +78,7 @@ class DND:
             + tf.cast(flattened_offsets, tf.int32)
         )
         reshaped_data = tf.reshape(
-            gathered_data, [batch_size, self.p, 160]
+            gathered_data, [batch_size, self.p, self.keysize]
         )
         return reshaped_data
 
@@ -118,24 +117,7 @@ class DND:
             ])
         return hit_keys, hit_values, update_ages
 
-    def _build_writer(self, hins, vins, epsize):
-        i = tf.constant(0)
-        print('epsize{}'.format(epsize))
-        tfeps = tf.constant(epsize)
-        tfblen = tf.shape(hins)[0]  # batch length
-        tfcond = lambda i: tf.less(i, tfblen)
-        
-        tfupd = tf.add(tfeps, 1)
-        body = lambda i: tf.group(
-            *[tfupd, self.write(hins[i], vins[i], tfeps)]
-        )
-
-        while_loop = tf.while_loop(
-            tfcond, body, [i]
-        )
-        
-
-    def write(self, hin, vin, epsize):
+    def _build_writer(self, hin, vin, epsize):
         with tf.name_scope('write'):
             # memory_keys (capacity, keysize)
             # hin (keysize) -> (capacity, keysize)  broadcasted
@@ -152,7 +134,6 @@ class DND:
     
             with tf.name_scope('BODY2'):
                 with tf.name_scope('IF'):
-                    # If the memory is NOT FULL
                     update_age = tf.assign(  # TODO: remove this
                         self.memory_ages[epsize - 1], 0
                     )
@@ -175,7 +156,6 @@ class DND:
                         )
     
                 with tf.name_scope('ELSE'):
-                    # else if memory is FULL
                     oldest_idx = tf.argmax(self.memory_ages)
                     key_update = tf.assign(
                         self.memory_keys[oldest_idx], hin
