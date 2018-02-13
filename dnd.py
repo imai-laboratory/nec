@@ -6,7 +6,7 @@ class DND:
     TensorFlow impelementation of DND.
     DND will be created per actions.
     '''
-    def __init__(self, keysize=160, capacity=10 ** 5, p=10, lr=0.1):
+    def __init__(self, keysize=512, capacity=10 ** 5, p=10, lr=0.1):
         self.capacity = capacity
         self.lr = lr
         self.p = p
@@ -34,6 +34,7 @@ class DND:
 
     def _build_network(self, readerin, hin, vin, epsize):
         # set placeholders
+        print('shape{}'.format(epsize))
         self.writer = self._build_writer(hin, vin, epsize)
         self.reader = self._build_reader(readerin, epsize)
         return self.reader, self.writer
@@ -119,6 +120,7 @@ class DND:
 
     def _build_writer(self, hins, vins, epsize):
         i = tf.constant(0)
+        print('epsize{}'.format(epsize))
         tfeps = tf.constant(epsize)
         tfblen = tf.shape(hins)[0]  # batch length
         tfcond = lambda i: tf.less(i, tfblen)
