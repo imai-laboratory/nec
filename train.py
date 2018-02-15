@@ -51,6 +51,10 @@ def main():
         final_exploration_step=args.final_exploration_frames
     )
 
+    # Session Configure
+    config = tf.ConfigProto(
+        device_count={'GPU': 0}
+    )
     sess = tf.Session()
     sess.__enter__()
 
