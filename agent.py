@@ -37,7 +37,7 @@ class Agent(object):
             dnd._init_vars()
             self.dnds.append(dnd)
 
-        act, write, train, q_values = build_graph.build_train(
+        act, write, train = build_graph.build_train(
             encode=encode,
             num_actions=self.num_actions,
             optimizer=tf.train.RMSPropOptimizer(
@@ -50,7 +50,6 @@ class Agent(object):
         self._act = act
         self._write = write
         self._train = train
-        self._q_values = q_values
 
     def get_epsize(self):
         rvals = [
@@ -82,11 +81,12 @@ class Agent(object):
     def act_and_train(self, obs, reward):
         normalized_obs = np.zeros((1, 84, 84, 4), dtype=np.float32)
         normalized_obs[0] = np.array(obs, dtype=np.float32) / 255.0
-        action, encoded_state = self._act(normalized_obs)
+        action, values, encoded_state = self._act(normalized_obs)
         action = action[0]
         encoded_state = encoded_state[0]
+        values = values[0]
         action = self.exploration.select_action(self.t, action, self.num_actions)
-        value = self._q_values(normalized_obs)[0][action]
+        value = values[action]
 
         if self.t > self.learning_starts and self.t % self.train_freq == 0:
             obs_t, actions, values = self.replay_buffer.sample(self.batch_size)
