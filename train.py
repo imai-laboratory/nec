@@ -15,6 +15,8 @@ from trainer import Trainer
 from datetime import datetime
 from env_wrapper import EnvWrapper
 
+run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+run_metadata = tf.RunMetadata()
 
 def main():
     date = datetime.now().strftime("%Y%m%d%H%M%S")
@@ -70,7 +72,8 @@ def main():
     sess.__enter__()
 
     agent = Agent(
-        model, actions, replay_buffer, explorer, learning_starts=10000
+        model, actions, replay_buffer, explorer, learning_starts=10000,
+        run_options=run_options, run_metadata=run_metadata
     )
 
     initialize()
@@ -86,11 +89,12 @@ def main():
         args.update_interval,
         args.render,
         outdir,
-        logdir
+        logdir,
+        run_metadata
     )
 
+    
     trainer.train(args.final_steps, train=True)
-
 
 if __name__ == '__main__':
     main()
