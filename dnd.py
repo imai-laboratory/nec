@@ -14,19 +14,20 @@ class DND:
 
     def _init_vars(self):
         with tf.name_scope('MEMORY_MODULE'):
-            self.curr_epsize = tf.Variable(self.p, dtype=tf.int32)
-            self.memory_keys = tf.Variable(
-                tf.zeros([self.capacity, self.keysize], dtype=tf.float32),
-                name='KEYS'
-            )
-            self.memory_values = tf.Variable(
-                tf.zeros([self.capacity], dtype=tf.float32),
-                name='VALUES'
-            )
-            self.memory_ages = tf.Variable(
-                tf.zeros([self.capacity], dtype=tf.int32),
-                name='AGES'
-            )
+            with tf.device('/gpu:0'):
+                self.curr_epsize = tf.Variable(self.p, dtype=tf.float32)
+                self.memory_keys = tf.Variable(
+                    tf.zeros([self.capacity, self.keysize], dtype=tf.float32),
+                    name='KEYS'
+                )
+                self.memory_values = tf.Variable(
+                    tf.zeros([self.capacity], dtype=tf.float32),
+                    name='VALUES'
+                )
+                self.memory_ages = tf.Variable(
+                    tf.zeros([self.capacity], dtype=tf.float32),
+                    name='AGES'
+                )
 
     def _build_network(self, readerin, hin, vin, epsize):
         self.writer = self._build_writer(hin, vin, epsize)
@@ -61,7 +62,7 @@ class DND:
                 # reset hit ages
                 tf.scatter_update(
                     self.memory_ages, unique_indicies,
-                    tf.zeros([self.p], dtype=tf.int32)
+                    tf.zeros([self.p], dtype=tf.float32)
                 )
                 # tf.assign(hit_ages, 0)
             ])
