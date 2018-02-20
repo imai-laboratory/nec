@@ -36,11 +36,7 @@ def build_train(encode, num_actions, optimizer, dnds, batch_size=32,
                     tf.expand_dims(encoded_state, axis=1),
                     [1, dnd.p, 1]
                 )
-                distances = tf.reduce_sum(
-                    # tf.square(tf.stop_gradient(keys) - expanded_encode),
-                    tf.square(tf.stop_gradient(keys) - expanded_encode),
-                    axis=2
-                )
+                distances = tf.reduce_sum(tf.square(keys - expanded_encode), axis=2)
                 k = 1.0 / (distances + 10e-20)
                 weights = (k /
                            tf.reshape(
@@ -54,7 +50,7 @@ def build_train(encode, num_actions, optimizer, dnds, batch_size=32,
         q_t = tf.transpose(q_values)
 
         q_t_selected = tf.reduce_sum(
-            q_t * tf.one_hot(act_t_ph, num_actions), axis=0
+            q_t * tf.one_hot(act_t_ph, num_actions), axis=1
         )
 
         # GRADIENTS
