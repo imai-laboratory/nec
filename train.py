@@ -1,6 +1,7 @@
 import argparse
 import gym
 import os
+import cv2
 import tensorflow as tf
 
 from lightsaber.tensorflow.util import initialize
