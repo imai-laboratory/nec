@@ -3,6 +3,7 @@ import gym
 import os
 import cv2
 import tensorflow as tf
+import numpy as np
 
 from lightsaber.tensorflow.util import initialize
 from lightsaber.rl.explorer import LinearDecayExplorer
