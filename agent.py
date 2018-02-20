@@ -1,4 +1,3 @@
-import network
 import build_graph
 import lightsaber.tensorflow.util as util
 import numpy as np
