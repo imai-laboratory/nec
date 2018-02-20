@@ -51,6 +51,7 @@ class Agent(object):
         self._train = train
         self._q_values = q_values
 
+
     def get_epsize(self):
         rvals = [
             min([dnd.curr_epsize.eval(), 10 ** 5]) for dnd in self.dnds
@@ -74,22 +75,22 @@ class Agent(object):
     def act(self, obs):
         normalized_obs = np.zeros((1, 84, 84, 4), dtype=np.float32)
         normalized_obs[0] = np.array(obs, dtype=np.float32) / 255.0
-        action = self._act(normalized_obs)[0]
+        action = self._act(normalized_obs, self.get_epsize())[0]
         return action
 
     def act_and_train(self, obs, reward):
         normalized_obs = np.zeros((1, 84, 84, 4), dtype=np.float32)
         normalized_obs[0] = np.array(obs, dtype=np.float32) / 255.0
-        action, encoded_state = self._act(normalized_obs)
+        action, encoded_state = self._act(normalized_obs, self.get_epsize())
         action = action[0]
         encoded_state = encoded_state[0]
         action = self.exploration.select_action(self.t, action, self.num_actions)
-        value = self._q_values(normalized_obs)[0][action]
+        value = self._q_values(normalized_obs, self.get_epsize())[0][action]
 
         if self.t > self.learning_starts and self.t % self.train_freq == 0:
             obs_t, actions, values = self.replay_buffer.sample(self.batch_size)
             obs_t = np.array(obs_t, dtype=np.float32) / 255.0
-            td_errors = self._train(obs_t, actions, values)
+            td_errors = self._train(obs_t, actions, values, self.get_epsize())
 
         if self.last_obs is not None:
             self.reward_cache.append(reward)

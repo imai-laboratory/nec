@@ -66,17 +66,17 @@ def build_train(encode, num_actions, optimizer, dnds, batch_size=32,
 
         actions = tf.reshape(tf.argmax(q_t, axis=1), [-1])
         act = util.function(
-            inputs=[obs_t_input], outputs=[actions, encoded_state])
+            inputs=[obs_t_input, epsize], outputs=[actions, encoded_state])
 
         train = util.function(
             inputs=[
-                obs_t_input, act_t_ph, target_values
+                obs_t_input, act_t_ph, target_values, epsize
             ],
             outputs=errors,
             updates=[optimize_expr]
         )
 
-        q_values = util.function(inputs=[obs_t_input], outputs=q_t)
+        q_values = util.function(inputs=[obs_t_input, epsize], outputs=q_t)
 
         writers = [
             util.function(inputs=[hin, vin, epsize], outputs=w)\
