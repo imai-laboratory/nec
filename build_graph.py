@@ -1,10 +1,17 @@
 import tensorflow as tf
 import lightsaber.tensorflow.util as util
+from tensorflow.python.client import timeline
 
 
 def build_train(encode, num_actions, optimizer, dnds, batch_size=32,
-                grad_norm_clipping=10.0, gamma=1.0, scope='deepq', reuse=None):
+                grad_norm_clipping=10.0, gamma=1.0, scope='deepq', 
+                run_options=None, run_metadata=None,
+                reuse=None):
     with tf.variable_scope(scope, reuse=reuse):
+        # TODO: remove
+        assert run_options is not None
+        assert run_metadata is not None
+
         obs_t_input = tf.placeholder(tf.float32, [None, 84, 84, 4], name='obs_t')
         act_t_ph = tf.placeholder(tf.int32, [None], name='action')
         target_values = tf.placeholder(tf.float32, [None], name='value')
@@ -36,7 +43,11 @@ def build_train(encode, num_actions, optimizer, dnds, batch_size=32,
                     tf.expand_dims(encoded_state, axis=1),
                     [1, dnd.p, 1]
                 )
-                distances = tf.reduce_sum(tf.square(keys - expanded_encode), axis=2)
+                distances = tf.reduce_sum(
+                    # tf.square(tf.stop_gradient(keys) - expanded_encode),
+                    tf.square(keys - expanded_encode),
+                    axis=2
+                )
                 k = 1.0 / (distances + 10e-20)
                 weights = (k /
                            tf.reshape(
@@ -63,18 +74,27 @@ def build_train(encode, num_actions, optimizer, dnds, batch_size=32,
 
         actions = tf.reshape(tf.argmax(q_t, axis=1), [-1])
         act = util.function(
-            inputs=[obs_t_input, epsize], outputs=[actions, q_t, encoded_state])
+            inputs=[obs_t_input, epsize],
+            outputs=[actions, q_t, encoded_state],
+            options=run_options,
+            run_metadata=run_metadata
+        )
 
         train = util.function(
             inputs=[
                 obs_t_input, act_t_ph, target_values, epsize
             ],
             outputs=errors,
-            updates=[optimize_expr]
+            updates=[optimize_expr],
+            options=run_options,
+            run_metadata=run_metadata
         )
 
         writers = [
-            util.function(inputs=[hin, vin, epsize], outputs=w)\
+            util.function(
+                inputs=[hin, vin, epsize],
+                outputs=w,
+            )
             for w in writs
         ]
 

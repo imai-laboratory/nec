@@ -1,7 +1,4 @@
-# import numpy as np
 import tensorflow as tf
-# from sklearn.neighbors.kd_tree import KDTree
-# from collections import deque
 
 
 class DND:
