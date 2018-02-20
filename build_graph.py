@@ -94,8 +94,6 @@ def build_train(encode, num_actions, optimizer, dnds, batch_size=32,
             util.function(
                 inputs=[hin, vin, epsize],
                 outputs=w,
-                options=run_options,
-                run_metadata=run_metadata
             )
             for w in writs
         ]
