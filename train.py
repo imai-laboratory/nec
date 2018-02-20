@@ -64,7 +64,7 @@ def main():
     config = tf.ConfigProto(
         device_count={'GPU': 0}
     )
-    sess = tf.Session()
+    sess = tf.Session(config=config)
     sess.__enter__()
 
     agent = Agent(
