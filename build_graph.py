@@ -41,7 +41,7 @@ def build_train(encode, num_actions, optimizer, dnds, batch_size=32,
                     tf.square(tf.stop_gradient(keys) - expanded_encode),
                     axis=2
                 )
-                k = 1.0 / (distances + 0.001)
+                k = 1.0 / (distances + 10e-20)
                 weights = (k /
                            tf.reshape(
                                tf.reduce_sum(k, axis=1),
