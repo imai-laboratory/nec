@@ -61,7 +61,7 @@ def build_train(encode, num_actions, optimizer, dnds, batch_size=32,
         q_t = tf.transpose(q_values)
 
         q_t_selected = tf.reduce_sum(
-            q_t * tf.one_hot(act_t_ph, num_actions), axis=0
+            q_t * tf.one_hot(act_t_ph, num_actions), axis=1
         )
 
         # GRADIENTS
