@@ -37,6 +37,7 @@ def build_train(encode, num_actions, optimizer, dnds, batch_size=32,
                     [1, dnd.p, 1]
                 )
                 distances = tf.reduce_sum(
+                    # tf.square(tf.stop_gradient(keys) - expanded_encode),
                     tf.square(tf.stop_gradient(keys) - expanded_encode),
                     axis=2
                 )

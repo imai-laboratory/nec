@@ -2,12 +2,14 @@ import numpy as np
 
 
 class EnvWrapper:
-    def __init__(self, env, r_preprocess=lambda s: s, s_preprocess=lambda r: r):
+    def __init__(
+            self, env, r_preprocess=lambda s: s, s_preprocess=lambda r: r
+    ):
         self.env = env
         self.observation_space = env.observation_space
         self.action_space = env.action_space
-        self.r_preprocessor = r_preprocessor
-        self.s_preprocessor = s_preprocessor
+        self.r_preprocess = r_preprocess
+        self.s_preprocess = s_preprocess
 
     def step(self, action):
         state, reward, done, info = self.env.step(action)

@@ -18,6 +18,8 @@ class Agent(object):
         self.actions = actions
         self.num_actions = len(actions)
         self.learning_starts = learning_starts
+
+        # N-STEP DQN
         self.n_step = n_step
         self.gamma = gamma
         self.last_obs = None
@@ -60,6 +62,7 @@ class Agent(object):
     def append_experience(self, value):
         ''' add experiences to DND
         '''
+        # R: Return
         R = 0
         for i, r in enumerate(self.reward_cache):
             R += r * (self.gamma ** i)
@@ -69,7 +72,7 @@ class Agent(object):
         encoded_state = self.encoded_state_cache[0]
         action = self.action_cache[0]
         self.replay_buffer.append(obs_t=obs_t, action=action, value=R)
-        self._write[action](encoded_state, value, self.get_epsize())
+        self._write[action](encoded_state, R, self.get_epsize())
 
     def act(self, obs):
         normalized_obs = np.zeros((1, 84, 84, 4), dtype=np.float32)
