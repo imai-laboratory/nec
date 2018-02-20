@@ -1,14 +1,14 @@
 import numpy as np
 import tensorflow as tf
-import cv2
 import os
-
+from tensorflow.python.client import timeline
 
 class Trainer:
     def __init__(
             self, sess, env, agent,
             update_interval, render,
             outdir, log_dir,
+            run_metadata=None
     ):
         ''' a Trainer class initalizer
         ARGS:
@@ -39,6 +39,9 @@ class Trainer:
         # Trainer global
         self.global_step = 0
         self.episode = 0
+
+        # TODO: remove
+        self.run_metadata = run_metadata
 
     def train(self, final_steps, train=True):
         while True:
@@ -86,6 +89,15 @@ class Trainer:
                 self.episode += 1
             print('Episode: {}, Step: {}: Reward: {}'.format(
                     self.episode, self.global_step, sum_of_rewards))
+
+            # TODO: remove
+            step_stats = self.run_metadata.step_stats
+            tl = timeline.Timeline(step_stats)
+            ctf = tl.generate_chrome_trace_format(show_memory=False,
+                                              show_dataflow=True)
+            with open("timeline.json", "w") as f:
+                print('write')
+                f.write(ctf)
 
             if final_steps < self.global_step:
                 break

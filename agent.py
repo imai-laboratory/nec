@@ -10,7 +10,8 @@ class Agent(object):
     def __init__(
             self, encode, actions,
             replay_buffer, exploration, lr=2.5e-4, batch_size=32,
-            train_freq=16, learning_starts=10000, gamma=0.99, n_step=100
+            train_freq=16, learning_starts=10000, gamma=0.99, n_step=100,
+            run_options=None, run_metadata=None
     ):
         self.batch_size = batch_size
         self.train_freq = train_freq
@@ -32,6 +33,10 @@ class Agent(object):
         self.encoded_state_cache = deque(maxlen=n_step - 1)
         self.dnds = []
 
+        # TODO: remove
+        self.run_options = run_options
+        self.run_metadata = run_metadata
+
         for i in range(self.num_actions):
             dnd = DND()
             dnd._init_vars()
@@ -45,7 +50,9 @@ class Agent(object):
             ),
             dnds=self.dnds,
             gamma=gamma,
-            grad_norm_clipping=10.0
+            grad_norm_clipping=10.0,
+            run_options=self.run_options,
+            run_metadata=self.run_metadata
         )
         self._act = act
         self._write = write
@@ -54,7 +61,7 @@ class Agent(object):
 
     def get_epsize(self):
         rvals = [
-            min([dnd.curr_epsize.eval(), 10 ** 5]) for dnd in self.dnds
+            min([dnd.curr_epsize.eval(), dnd.capacity]) for dnd in self.dnds
         ]
         return rvals
 
