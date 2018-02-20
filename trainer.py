@@ -97,7 +97,7 @@ class Trainer:
                                               show_dataflow=True)
             with open("timeline.json", "w") as f:
                 print('write')
-                f.write(self.ctf)
+                f.write(ctf)
 
             if final_steps < self.global_step:
                 break

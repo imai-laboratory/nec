@@ -61,7 +61,7 @@ class Agent(object):
 
     def get_epsize(self):
         rvals = [
-            min([dnd.curr_epsize.eval(), 10 ** 5]) for dnd in self.dnds
+            min([dnd.curr_epsize.eval(), dnd.capacity]) for dnd in self.dnds
         ]
         return rvals
 
