@@ -14,7 +14,8 @@ class DND:
 
     def _init_vars(self):
         with tf.name_scope('MEMORY_MODULE'):
-            with tf.device('/gpu:0'):
+            # TODO: change
+            with tf.device('/cpu:0'):
                 self.curr_epsize = tf.Variable(self.p, dtype=tf.float32)
                 self.memory_keys = tf.Variable(
                     tf.zeros([self.capacity, self.keysize], dtype=tf.float32),

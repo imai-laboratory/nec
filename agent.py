@@ -11,10 +11,10 @@ class Agent(object):
             replay_buffer, exploration,
             options, run_options=None, run_metadata=None
     ):
-        self.train_freq = train_freq
         self.actions = actions
         self.num_actions = len(actions)
 
+        self.options = options
         self.last_obs = None
         self.t = 0
         self.t_in_episode = 0
@@ -32,7 +32,7 @@ class Agent(object):
 
         # TODO: list comprehension
         for i in range(self.num_actions):
-            dnd = DND()
+            dnd = DND(options.encoded_size, options.capacity, options.p)
             dnd._init_vars()
             self.dnds.append(dnd)
 
@@ -45,14 +45,13 @@ class Agent(object):
                 epsilon=options.epsilon
             ),
             dnds=self.dnds,
-            options,
+            options=options,
             run_options=self.run_options,
             run_metadata=self.run_metadata
         )
         self._act = act
         self._write = write
         self._train = train
-
 
     # TODO: remove
     def get_epsize(self):
@@ -69,8 +68,8 @@ class Agent(object):
         # R: Return
         R = 0
         for i, r in enumerate(self.reward_cache):
-            R += r * (options.gamma ** i)
-        R += value * (options.gamma ** (i + 1))
+            R += r * (self.options.gamma ** i)
+        R += value * (self.options.gamma ** (i + 1))
 
         obs_t = self.state_cache[0]
         encoded_state = self.encoded_state_cache[0]
@@ -79,13 +78,13 @@ class Agent(object):
         self._write[action](encoded_state, R, self.get_epsize())
 
     def act(self, obs):
-        normalized_obs = np.zeros((1, 84, 84, 4), dtype=np.float32)
+        normalized_obs = np.zeros([1] + list(self.options.in_shape), dtype=np.float32)
         normalized_obs[0] = np.array(obs, dtype=np.float32) / 255.0
         action = self._act(normalized_obs, self.get_epsize())[0]
         return action
 
     def act_and_train(self, obs, reward):
-        normalized_obs = np.zeros((1, 84, 84, 4), dtype=np.float32)
+        normalized_obs = np.zeros([1] + list(self.options.in_shape), dtype=np.float32)
         normalized_obs[0] = np.array(obs, dtype=np.float32) / 255.0
         action, values, encoded_state = self._act(normalized_obs, self.get_epsize())
         action = action[0]
@@ -94,8 +93,8 @@ class Agent(object):
         action = self.exploration.select_action(self.t, action, self.num_actions)
         value = values[action]
 
-        if self.t > options.learning_starts and self.t % options.train_freq == 0:
-            obs_t, actions, values = self.replay_buffer.sample(options.batch_size)
+        if self.t > self.options.learning_starts and self.t % self.options.train_freq == 0:
+            obs_t, actions, values = self.replay_buffer.sample(self.options.batch_size)
             obs_t = np.array(obs_t, dtype=np.float32) / 255.0
             td_errors = self._train(obs_t, actions, values, self.get_epsize())
 
@@ -105,7 +104,7 @@ class Agent(object):
             self.action_cache.append(self.last_action)
             self.encoded_state_cache.append(self.last_encoded_state)
 
-        if self.t_in_episode >= options.n_step:
+        if self.t_in_episode >= self.options.n_step:
             self.append_experience(value)
 
         self.t += 1

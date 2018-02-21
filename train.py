@@ -23,7 +23,7 @@ run_metadata = tf.RunMetadata()
 def main():
     date = datetime.now().strftime("%Y%m%d%H%M%S")
     parser = argparse.ArgumentParser()
-    parser.add_argument('--env', type=str, default='CartPole-v0')
+    parser.add_argument('--env', type=str, default='CartPole-v1')
     parser.add_argument('--outdir', type=str, default=date)
     parser.add_argument('--logdir', type=str, default=date)
     parser.add_argument('--gpu', type=int, default=0)
@@ -46,7 +46,7 @@ def main():
 
     env = EnvWrapper(
         gym.make(options.environment),
-        s_preprocess=state_preprocess,
+        s_preprocess=lambda state: state,
         r_preprocess=lambda r: np.clip(r, -1, 1)
     )
 

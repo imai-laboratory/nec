@@ -3,12 +3,11 @@ import tensorflow as tf
 import os
 from tensorflow.python.client import timeline
 
+
 class Trainer:
     def __init__(
             self, sess, env, agent,
-            update_interval, render,
-            outdir, log_dir,
-            run_metadata=None
+            options, run_metadata=None
     ):
         ''' a Trainer class initalizer
         ARGS:
@@ -22,10 +21,11 @@ class Trainer:
         self.agent = agent
 
         # Training Options
-        self.update_interval = update_interval
-        self.render = render
-        self.outdir = outdir
-        self.log_dir = log_dir
+        self.options = options
+        self.update_interval = options.update_interval
+        self.render = options.render
+        self.outdir = options.outdir
+        self.logdir = options.logdir
 
         self.save_model_per = 10 ** 6
 
@@ -34,7 +34,7 @@ class Trainer:
             tf.int32, (), name='reward_summary')
         tf.summary.scalar('reward_summary', self.reward_summary)
         self.merged = tf.summary.merge_all()
-        self.train_writer = tf.summary.FileWriter(self.log_dir, sess.graph)
+        self.train_writer = tf.summary.FileWriter(self.logdir, sess.graph)
 
         # Trainer global
         self.global_step = 0
@@ -46,7 +46,9 @@ class Trainer:
     def train(self, final_steps, train=True):
         while True:
             # states are in RGBD?
-            states = np.zeros((self.update_interval, 84, 84), dtype=np.uint8)
+            # TODO: change
+            # states = np.zeros((self.update_interval, 84, 84), dtype=np.uint8)
+            states = np.zeros((self.update_interval, 1, 4), dtype=np.uint8)
             reward = 0
             done = False
             sum_of_rewards = 0
@@ -91,12 +93,13 @@ class Trainer:
                     self.episode, self.global_step, sum_of_rewards))
 
             # TODO: remove
-            step_stats = self.run_metadata.step_stats
-            tl = timeline.Timeline(step_stats)
-            ctf = tl.generate_chrome_trace_format(show_memory=False,
-                                              show_dataflow=True)
-            with open("timeline.json", "w") as f:
-                print('write')
+            if self.options.profile:
+                step_stats = self.run_metadata.step_stats
+                tl = timeline.Timeline(step_stats)
+                ctf = tl.generate_chrome_trace_format(show_memory=False,
+                                                  show_dataflow=True)
+                with open("timeline.json", "w") as f:
+                    print('write')
                 f.write(ctf)
 
             if final_steps < self.global_step:

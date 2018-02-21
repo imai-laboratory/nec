@@ -38,28 +38,45 @@ class Options:
         # Neural Networks
         if self.environment == 'PongDeterministic-v4':
             self.model = PONG_MODEL
-        elif self.environment == 'CartPole-v0':
+        elif self.environment == 'CartPole-v1':
             self.model = CARTPOLE_MODEL
 
-        self.convs = self.models['cnns']
-        self.fcs = self.models['fcs']
+        self.convs = self.model['cnns']
+        self.fcs = self.model['fcs']
+        self.encoded_size = self.fcs[-1]
 
         # FOR AGENT LEARNING
         self.rep_buffer_size = 10 ** 5
         self.batch_size = 32
-        self.learning_starts = 10000
+        # self.learning_starts = 10000
+        self.learning_starts = 500
         self.gamma = 0.99
         self.n_step = 100  # N-Step DQN
         self.train_freq = 16
         self.learning_starts = 10000
 
         # Build Train
-        self.lr = 2.5e-4
+        # self.lr = 2.5e-4
+        self.lr = 10e-2
         self.momentum = 0.95
-        self.epsilon = 1e-2
+        # self.epsilon = 10e-2
+        self.epsilon = 10e-2
 
         # DND OPTIONS
-        self.hin_size = 512
+        self.hin_size = self.encoded_size
         self.grad_norm_clipping = 10.0
+        self.capacity = 10 ** 3
+        self.p = 10
 
-        self.num_actions = None
+        # TODO: magic
+        self.num_actions = 2
+
+        # TODO: remove
+        self.device = '\gpu:0' if self.gpu else '\cpu:0'
+
+        # TODO: remove
+        # self.in_shape = (1, 84, 84, self.update_interval)
+        self.in_shape = (1, 4, self.update_interval)
+        self.image_size = ()
+
+        self.profile = False

@@ -12,8 +12,7 @@ def build_train(encode, num_actions, optimizer, dnds,
         assert run_metadata is not None
 
         # Placeholders for CNN
-        obs_t_input = tf.placeholder(tf.float32, [None, 84, 84,
-                                                  options.update_interval], name='obs_t')
+        obs_t_input = tf.placeholder(tf.float32, [None] + list(options.in_shape), name='obs_t')
         act_t_ph = tf.placeholder(tf.int32, [None], name='action')
         target_values = tf.placeholder(tf.float32, [None], name='value')
 
