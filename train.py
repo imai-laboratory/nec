@@ -67,7 +67,6 @@ def main():
 
     # exploration
     if constants.EXPLORATION_TYPE == 'linear':
-        print('linear')
         duration = constants.EXPLORATION_DURATION
         explorer = LinearDecayExplorer(final_exploration_step=duration)
     else:
