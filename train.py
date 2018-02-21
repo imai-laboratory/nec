@@ -50,7 +50,7 @@ def main():
         constants = box_constants
         explorer = ConstantExplorer(constants.EXPLORATION_EPSILON)
         actions = range(env.action_space.n)
-        state_shape = [env.observation_space.shape[0], constants.UPDATE_INTERVAL]
+        state_shape = [env.observation_space.shape[0], constants.STATE_WINDOW]
         state_preprocess = lambda state: state
         # (window_size, dim) -> (dim, window_size)
         phi = lambda state: np.transpose(state, [1, 0])
@@ -61,7 +61,7 @@ def main():
             final_exploration_step=constants.EXPLORATION_DURATION
         )
         actions = get_action_space(args.env)
-        state_shape = [84, 84, constants.UPDATE_INTERVAL]
+        state_shape = [84, 84, constants.STATE_WINDOW]
         def state_preprocess(state):
             state = cv2.cvtColor(state, cv2.COLOR_RGB2GRAY)
             state = cv2.resize(state, (84, 84))
@@ -130,7 +130,7 @@ def main():
         agent=agent,
         render=args.render,
         state_shape=state_shape[:-1], # ignore last channel
-        state_window=constants.UPDATE_INTERVAL,
+        state_window=constants.STATE_WINDOW,
         final_step=constants.FINAL_STEP,
         end_episode=end_episode,
         training=not args.demo
