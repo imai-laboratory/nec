@@ -15,6 +15,7 @@ from trainer import Trainer
 from datetime import datetime
 from env_wrapper import EnvWrapper
 from options import Options
+from tensorflow.python.client import timeline
 
 run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
 run_metadata = tf.RunMetadata()
@@ -62,9 +63,16 @@ def main():
     )
 
     # Session Configure
+    # GPU SETTINGS
     config = tf.ConfigProto(
-        device_count={'GPU': 0}
+        device_count = {'GPU': 1},
+        gpu_options=tf.GPUOptions(
+            visible_device_list='1',  # gpu device id (from 0)
+            # per_process_gpu_memory_fraction=args.gpu_mem,
+            # allow_growth=args.gpu_allow_growth
+        )
     )
+
     sess = tf.Session(config=config)
     sess.__enter__()
 
