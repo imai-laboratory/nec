@@ -48,7 +48,6 @@ def main():
     # box environment
     if len(env.observation_space.shape) == 1:
         constants = box_constants
-        explorer = ConstantExplorer(constants.EXPLORATION_EPSILON)
         actions = range(env.action_space.n)
         state_shape = [env.observation_space.shape[0], constants.STATE_WINDOW]
         state_preprocess = lambda state: state
@@ -57,9 +56,6 @@ def main():
     # atari environment
     else:
         constants = atari_constants
-        explorer = LinearDecayExplorer(
-            final_exploration_step=constants.EXPLORATION_DURATION
-        )
         actions = get_action_space(args.env)
         state_shape = [84, 84, constants.STATE_WINDOW]
         def state_preprocess(state):
@@ -68,6 +64,14 @@ def main():
             return np.array(state, dtype=np.float32) / 255.0
         # (window_size, H, W) -> (H, W, window_size)
         phi = lambda state: np.transpose(state, [1, 2, 0])
+
+    # exploration
+    if constants.EXPLORATION_TYPE == 'linear':
+        print('linear')
+        duration = constants.EXPLORATION_DURATION
+        explorer = LinearDecayExplorer(final_exploration_step=duration)
+    else:
+        explorer = ConstantExplorer(constants.EXPLORATION_EPSILON)
 
     # wrap gym environment
     env = EnvWrapper(
