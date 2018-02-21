@@ -14,6 +14,7 @@ from agent import Agent
 from trainer import Trainer
 from datetime import datetime
 from env_wrapper import EnvWrapper
+from options import Options
 
 run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
 run_metadata = tf.RunMetadata()
@@ -33,64 +34,54 @@ def main():
     parser.add_argument('--update-interval', type=int, default=4)
     parser.add_argument('--render', action='store_true')
     args = parser.parse_args()
+    options = Options(args)
 
-    # absolute outdir
-    outdir = os.path.join(os.path.dirname(__file__), 'results_' + args.outdir)
-    if not os.path.exists(outdir):
-        os.makedirs(outdir)
-    # absolute logdir
-    logdir = os.path.join(os.path.dirname(__file__), 'logs/' + args.logdir)
 
     # v4 4 frames per function call
     def state_preprocess(state):
         state = cv2.cvtColor(state, cv2.COLOR_RGB2GRAY)
         state = cv2.resize(state, (84, 84))
         return state
+
     env = EnvWrapper(
-        gym.make(args.env),
+        gym.make(options.environment),
         s_preprocess=state_preprocess,
         r_preprocess=lambda r: np.clip(r, -1, 1)
     )
 
-    actions = get_action_space(args.env)
+    actions = get_action_space(options.environment)
 
     model = make_cnn(
         convs=[(32, 8, 4), (64, 4, 2), (64, 3, 1)],
         hiddens=[512]
     )
 
-    replay_buffer = NECReplayBuffer(10 ** 5)
+    replay_buffer = NECReplayBuffer(options.rep_buffer_size)
     explorer = LinearDecayExplorer(
-        final_exploration_step=args.final_exploration_frames
+        final_exploration_step=options.final_exploration_frames
     )
 
     # Session Configure
     config = tf.ConfigProto(
-        device_count = {'GPU': 0}
+        device_count={'GPU': 0}
     )
     sess = tf.Session(config=config)
     sess.__enter__()
 
     agent = Agent(
-        model, actions, replay_buffer, explorer, learning_starts=10000,
+        model, actions, replay_buffer, explorer, 
+        options,
         run_options=run_options, run_metadata=run_metadata
     )
 
     initialize()
 
     saver = tf.train.Saver()
-    if args.load is not None:
-        saver.restore(sess, args.load)
+    if options.load is not None:
+        saver.restore(sess, options.load)
 
     trainer = Trainer(
-        sess,
-        env,
-        agent,
-        args.update_interval,
-        args.render,
-        outdir,
-        logdir,
-        run_metadata
+        sess, env, agent, options, run_metadata
     )
 
     

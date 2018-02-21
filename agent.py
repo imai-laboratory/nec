@@ -1,5 +1,4 @@
 import build_graph
-import lightsaber.tensorflow.util as util
 import numpy as np
 import tensorflow as tf
 from dnd import DND
@@ -9,34 +8,29 @@ from collections import deque
 class Agent(object):
     def __init__(
             self, encode, actions,
-            replay_buffer, exploration, lr=2.5e-4, batch_size=32,
-            train_freq=16, learning_starts=10000, gamma=0.99, n_step=100,
-            run_options=None, run_metadata=None
+            replay_buffer, exploration,
+            options, run_options=None, run_metadata=None
     ):
-        self.batch_size = batch_size
         self.train_freq = train_freq
         self.actions = actions
         self.num_actions = len(actions)
-        self.learning_starts = learning_starts
 
-        # N-STEP DQN
-        self.n_step = n_step
-        self.gamma = gamma
         self.last_obs = None
         self.t = 0
         self.t_in_episode = 0
         self.exploration = exploration
         self.replay_buffer = replay_buffer
-        self.reward_cache = deque(maxlen=n_step - 1)
-        self.state_cache = deque(maxlen=n_step - 1)
-        self.action_cache = deque(maxlen=n_step - 1)
-        self.encoded_state_cache = deque(maxlen=n_step - 1)
+        self.reward_cache = deque(maxlen=options.n_step - 1)
+        self.state_cache = deque(maxlen=options.n_step - 1)
+        self.action_cache = deque(maxlen=options.n_step - 1)
+        self.encoded_state_cache = deque(maxlen=options.n_step - 1)
         self.dnds = []
 
         # TODO: remove
         self.run_options = run_options
         self.run_metadata = run_metadata
 
+        # TODO: list comprehension
         for i in range(self.num_actions):
             dnd = DND()
             dnd._init_vars()
@@ -46,11 +40,12 @@ class Agent(object):
             encode=encode,
             num_actions=self.num_actions,
             optimizer=tf.train.RMSPropOptimizer(
-                learning_rate=lr, momentum=0.95, epsilon=1e-2
+                learning_rate=options.lr,
+                momentum=options.momentum,
+                epsilon=options.epsilon
             ),
             dnds=self.dnds,
-            gamma=gamma,
-            grad_norm_clipping=10.0,
+            options,
             run_options=self.run_options,
             run_metadata=self.run_metadata
         )
@@ -59,6 +54,7 @@ class Agent(object):
         self._train = train
 
 
+    # TODO: remove
     def get_epsize(self):
         rvals = [
             min([dnd.curr_epsize.eval(), dnd.capacity]) for dnd in self.dnds
@@ -71,8 +67,8 @@ class Agent(object):
         # R: Return
         R = 0
         for i, r in enumerate(self.reward_cache):
-            R += r * (self.gamma ** i)
-        R += value * (self.gamma ** (i + 1))
+            R += r * (options.gamma ** i)
+        R += value * (options.gamma ** (i + 1))
 
         obs_t = self.state_cache[0]
         encoded_state = self.encoded_state_cache[0]
@@ -96,8 +92,8 @@ class Agent(object):
         action = self.exploration.select_action(self.t, action, self.num_actions)
         value = values[action]
 
-        if self.t > self.learning_starts and self.t % self.train_freq == 0:
-            obs_t, actions, values = self.replay_buffer.sample(self.batch_size)
+        if self.t > options.learning_starts and self.t % options.train_freq == 0:
+            obs_t, actions, values = self.replay_buffer.sample(options.batch_size)
             obs_t = np.array(obs_t, dtype=np.float32) / 255.0
             td_errors = self._train(obs_t, actions, values, self.get_epsize())
 
@@ -107,7 +103,7 @@ class Agent(object):
             self.action_cache.append(self.last_action)
             self.encoded_state_cache.append(self.last_encoded_state)
 
-        if self.t_in_episode >= self.n_step:
+        if self.t_in_episode >= options.n_step:
             self.append_experience(value)
 
         self.t += 1

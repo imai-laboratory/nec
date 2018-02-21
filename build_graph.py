@@ -3,8 +3,8 @@ import lightsaber.tensorflow.util as util
 from tensorflow.python.client import timeline
 
 
-def build_train(encode, num_actions, optimizer, dnds, batch_size=32,
-                grad_norm_clipping=10.0, gamma=1.0, scope='deepq', 
+def build_train(encode, num_actions, optimizer, dnds,
+                options, scope='DEEPQ',
                 run_options=None, run_metadata=None,
                 reuse=None):
     with tf.variable_scope(scope, reuse=reuse):
@@ -23,7 +23,7 @@ def build_train(encode, num_actions, optimizer, dnds, batch_size=32,
 
         # Place holders for DND
         hin = tf.placeholder(
-            tf.float32, [512], name='key'
+            tf.float32, [options.hin_size], name='key'
         )
         vin = tf.placeholder(
             tf.float32, [], name='value'
@@ -69,7 +69,7 @@ def build_train(encode, num_actions, optimizer, dnds, batch_size=32,
         gradients = optimizer.compute_gradients(errors, var_list=encode_vars)
         for i, (grad, var) in enumerate(gradients):
             if grad is not None:
-                gradients[i] = (tf.clip_by_norm(grad, grad_norm_clipping), var)
+                gradients[i] = (tf.clip_by_norm(grad, options.grad_norm_clipping), var)
         optimize_expr = optimizer.apply_gradients(gradients)
 
         actions = tf.reshape(tf.argmax(q_t, axis=1), [-1])
