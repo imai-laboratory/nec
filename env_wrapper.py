@@ -2,9 +2,7 @@ import numpy as np
 
 
 class EnvWrapper:
-    def __init__(
-            self, env, r_preprocess=lambda s: s, s_preprocess=lambda r: r
-    ):
+    def __init__(self, env, r_preprocess=lambda s: s, s_preprocess=lambda r: r):
         self.env = env
         self.observation_space = env.observation_space
         self.action_space = env.action_space
@@ -23,4 +21,3 @@ class EnvWrapper:
 
     def render(self):
         self.env.render()
-

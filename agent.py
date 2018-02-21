@@ -1,110 +1,133 @@
 import build_graph
 import numpy as np
 import tensorflow as tf
-from dnd import DND
 from collections import deque
 
 
+# state transition cache for N-step update
+class Cache:
+    def __init__(self, n_step, gamma):
+        self.gamma = gamma
+        self.states = deque(maxlen=n_step - 1)
+        self.actions = deque(maxlen=n_step - 1)
+        self.rewards = deque(maxlen=n_step - 1)
+        self.encodes = deque(maxlen=n_step - 1)
+
+    def add(self, state, action, reward, encode):
+        self.states.append(state)
+        self.actions.append(action)
+        self.rewards.append(reward)
+        self.encodes.append(encode)
+
+    def pop(self, bootstrap_value):
+        # calculate N-step value
+        R = 0
+        for i, r in enumerate(self.rewards):
+            R += r * (self.gamma ** i)
+        R += bootstrap_value * (self.gamma ** (i + 1))
+        # remove oldest values
+        reward = self.rewards.popleft()
+        state = self.states.popleft()
+        action = self.actions.popleft()
+        encode = self.encodes.popleft()
+        return state, action, encode, R
+
+    def flush(self):
+        self.states.clear()
+        self.actions.clear()
+        self.rewards.clear()
+        self.encodes.clear()
+
+    def size(self):
+        return len(self.states)
+
 class Agent(object):
-    def __init__(
-            self, encode, actions,
-            replay_buffer, exploration,
-            options, run_options=None, run_metadata=None
-    ):
+    def __init__(self,
+                network,
+                dnds,
+                actions,
+                state_shape,
+                replay_buffer,
+                exploration,
+                constants,
+                phi=lambda s: s,
+                run_options=None,
+                run_metadata=None):
         self.actions = actions
         self.num_actions = len(actions)
 
-        self.options = options
+        self.replay_buffer = replay_buffer
+        self.exploration = exploration
+        self.constants = constants
+        self.dnds = dnds
+        self.phi = phi
+        self.cache = Cache(constants.N_STEP, constants.GAMMA)
+
         self.last_obs = None
         self.t = 0
         self.t_in_episode = 0
-        self.exploration = exploration
-        self.replay_buffer = replay_buffer
-        self.reward_cache = deque(maxlen=options.n_step - 1)
-        self.state_cache = deque(maxlen=options.n_step - 1)
-        self.action_cache = deque(maxlen=options.n_step - 1)
-        self.encoded_state_cache = deque(maxlen=options.n_step - 1)
-        self.dnds = []
 
         # TODO: remove
         self.run_options = run_options
         self.run_metadata = run_metadata
 
-        # TODO: list comprehension
-        for i in range(self.num_actions):
-            dnd = DND(options.encoded_size, options.capacity, options.p)
-            dnd._init_vars()
-            self.dnds.append(dnd)
-
-        act, write, train = build_graph.build_train(
-            encode=encode,
+        self._act,\
+        self._write,\
+        self._train = build_graph.build_train(
+            encode=network,
             num_actions=self.num_actions,
+            state_shape=state_shape,
             optimizer=tf.train.RMSPropOptimizer(
-                learning_rate=options.lr,
-                momentum=options.momentum,
-                epsilon=options.epsilon
+                learning_rate=constants.LR,
+                momentum=constants.MOMENTUM,
+                epsilon=constants.EPSILON
             ),
             dnds=self.dnds,
-            options=options,
+            key_size=constants.DND_KEY_SIZE,
+            grad_clipping=constants.GRAD_CLIPPING,
             run_options=self.run_options,
             run_metadata=self.run_metadata
         )
-        self._act = act
-        self._write = write
-        self._train = train
 
     # TODO: remove
     def get_epsize(self):
         ''' a helper function to get each episode size of dnds
         '''
-        rvals = [
-            min([dnd.curr_epsize.eval(), dnd.capacity]) for dnd in self.dnds
-        ]
-        return rvals
+        sizes = map(lambda m: min([m.curr_epsize.eval(), m.capacity]), self.dnds)
+        return list(sizes)
 
+    # append state transition to DND and replay memory
     def append_experience(self, value):
-        ''' add experiences to DND
-        '''
-        # R: Return
-        R = 0
-        for i, r in enumerate(self.reward_cache):
-            R += r * (self.options.gamma ** i)
-        R += value * (self.options.gamma ** (i + 1))
+        state, action, encode, R = self.cache.pop(value)
+        self.replay_buffer.append(obs_t=state, action=action, value=R)
+        self._write[action](encode, R, self.get_epsize())
 
-        obs_t = self.state_cache[0]
-        encoded_state = self.encoded_state_cache[0]
-        action = self.action_cache[0]
-        self.replay_buffer.append(obs_t=obs_t, action=action, value=R)
-        self._write[action](encoded_state, R, self.get_epsize())
-
-    def act(self, obs):
-        normalized_obs = np.zeros([1] + list(self.options.in_shape), dtype=np.float32)
-        normalized_obs[0] = np.array(obs, dtype=np.float32) / 255.0
-        action = self._act(normalized_obs, self.get_epsize())[0]
-        return action
-
-    def act_and_train(self, obs, reward):
-        normalized_obs = np.zeros([1] + list(self.options.in_shape), dtype=np.float32)
-        normalized_obs[0] = np.array(obs, dtype=np.float32) / 255.0
-        action, values, encoded_state = self._act(normalized_obs, self.get_epsize())
+    def act(self, obs, reward, training=True):
+        # preprocess for HWC manner
+        obs = self.phi(obs)
+        action, values, encoded_state = self._act([obs], self.get_epsize())
         action = action[0]
         encoded_state = encoded_state[0]
         values = values[0]
+
+        # epsilon greedy exploration
         action = self.exploration.select_action(self.t, action, self.num_actions)
         value = values[action]
 
-        if self.t > self.options.learning_starts and self.t % self.options.train_freq == 0:
-            obs_t, actions, values = self.replay_buffer.sample(self.options.batch_size)
-            obs_t = np.array(obs_t, dtype=np.float32) / 255.0
-            td_errors = self._train(obs_t, actions, values, self.get_epsize())
+        if training and self.t > self.t > self.constants.LEARNING_START_STEP:
+            if self.t % self.constants.UPDATE_INTERVAL == 0:
+                obs_t, actions, values = self.replay_buffer.sample(self.constants.BATCH_SIZE)
+                td_errors = self._train(obs_t, actions, values, self.get_epsize())
 
         if self.last_obs is not None:
-            self.reward_cache.append(reward)
-            self.state_cache.append(self.last_obs)
-            self.action_cache.append(self.last_action)
-            self.encoded_state_cache.append(self.last_encoded_state)
+            self.cache.add(
+                self.last_obs,
+                self.last_action,
+                reward,
+                self.last_encoded_state
+            )
 
-        if self.t_in_episode >= self.options.n_step:
+        if self.t_in_episode >= self.constants.N_STEP:
             self.append_experience(value)
 
         self.t += 1
@@ -114,24 +137,16 @@ class Agent(object):
         self.last_action = action
         return action
 
-    def stop_episode_and_train(self, obs, reward):
-        self.reward_cache.append(reward)
-        self.state_cache.append(self.last_obs)
-        self.action_cache.append(self.last_action)
-        self.encoded_state_cache.append(self.last_encoded_state)
-        while len(self.reward_cache) > 0:
+    def stop_episode(self, obs, reward, training=True):
+        self.cache.add(
+            self.last_obs,
+            self.last_action,
+            reward,
+            self.last_encoded_state
+        )
+        while training and self.cache.size() > 0:
             self.append_experience(0)
-            self.reward_cache.popleft()
-            self.state_cache.popleft()
-            self.action_cache.popleft()
-            self.encoded_state_cache.popleft()
-        self.stop_episode()
-
-    def stop_episode(self):
         self.last_obs = None
         self.last_action = 0
         self.t_in_episode = 0
-        self.reward_cache.clear()
-        self.state_cache.clear()
-        self.action_cache.clear()
-        self.encoded_state_cache.clear()
+        self.cache.flush()
