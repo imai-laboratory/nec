@@ -56,6 +56,8 @@ class Agent(object):
 
     # TODO: remove
     def get_epsize(self):
+        ''' a helper function to get each episode size of dnds
+        '''
         rvals = [
             min([dnd.curr_epsize.eval(), dnd.capacity]) for dnd in self.dnds
         ]

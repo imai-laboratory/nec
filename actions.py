@@ -1,6 +1,7 @@
 action_space = {
     'PongDeterministic-v4': [1, 2, 3],
-    'BreakoutDeterministic-v4': [1, 2, 3]
+    'BreakoutDeterministic-v4': [1, 2, 3],
+    'CartPole-v0': [1, 2]
 }
 
 

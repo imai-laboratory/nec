@@ -6,12 +6,13 @@ def _make_cnn(convs, hiddens, inpt, num_actions, scope, reuse=None):
     ''' creates convlayers
     ARGS:
         convs (list): a list of tuple(s) which includes layer settings.
-        each tuple represents (output_size, kernel_size, stride)
+        each tuple represents (output_size, kernel_size, stride).
+        if list is None then conv layers will be skipped.
         hiddens (list): a list of integers which includes FC layer settings.
         each integer represents the number of hidden units in a FC layer.
     '''
     with tf.variable_scope(scope, reuse=reuse):
-        out = inpt
+        out = inpt  # for skipping conv layers
         with tf.variable_scope('convnet'):
             for num_outputs, kernel_size, stride in convs:
                 out = layers.convolution2d(
@@ -29,7 +30,8 @@ def _make_cnn(convs, hiddens, inpt, num_actions, scope, reuse=None):
                 encode = layers.fully_connected(
                     encode,
                     num_outputs=hidden,
-                    activation_fn=None
+                    # activation_fn=None
+                    activation_fn=tf.nn.relu
                 )
         return encode
 

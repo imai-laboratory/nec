@@ -1,6 +1,5 @@
 import argparse
 import gym
-import os
 import cv2
 import tensorflow as tf
 import numpy as np
@@ -20,10 +19,11 @@ from tensorflow.python.client import timeline
 run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
 run_metadata = tf.RunMetadata()
 
+
 def main():
     date = datetime.now().strftime("%Y%m%d%H%M%S")
     parser = argparse.ArgumentParser()
-    parser.add_argument('--env', type=str, default='PongDeterministic-v4')
+    parser.add_argument('--env', type=str, default='CartPole-v0')
     parser.add_argument('--outdir', type=str, default=date)
     parser.add_argument('--logdir', type=str, default=date)
     parser.add_argument('--gpu', type=int, default=0)
@@ -38,7 +38,7 @@ def main():
     options = Options(args)
 
 
-    # v4 4 frames per function call
+    #  v4 4 frames per function call
     def state_preprocess(state):
         state = cv2.cvtColor(state, cv2.COLOR_RGB2GRAY)
         state = cv2.resize(state, (84, 84))
@@ -52,10 +52,7 @@ def main():
 
     actions = get_action_space(options.environment)
 
-    model = make_cnn(
-        convs=[(32, 8, 4), (64, 4, 2), (64, 3, 1)],
-        hiddens=[512]
-    )
+    model = make_cnn(convs=options.convs, hiddens=options.fcs)
 
     replay_buffer = NECReplayBuffer(options.rep_buffer_size)
     explorer = LinearDecayExplorer(
@@ -65,7 +62,7 @@ def main():
     # Session Configure
     # GPU SETTINGS
     config = tf.ConfigProto(
-        device_count = {'GPU': 1},
+        device_count={'GPU': 1},
         gpu_options=tf.GPUOptions(
             visible_device_list='1',  # gpu device id (from 0)
             # per_process_gpu_memory_fraction=args.gpu_mem,
@@ -88,12 +85,9 @@ def main():
     if options.load is not None:
         saver.restore(sess, options.load)
 
-    trainer = Trainer(
-        sess, env, agent, options, run_metadata
-    )
-
-    
+    trainer = Trainer(sess, env, agent, options, run_metadata)
     trainer.train(args.final_steps, train=True)
+
 
 if __name__ == '__main__':
     main()

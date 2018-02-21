@@ -1,6 +1,5 @@
 import tensorflow as tf
 import lightsaber.tensorflow.util as util
-from tensorflow.python.client import timeline
 
 
 def build_train(encode, num_actions, optimizer, dnds,
@@ -12,7 +11,9 @@ def build_train(encode, num_actions, optimizer, dnds,
         assert run_options is not None
         assert run_metadata is not None
 
-        obs_t_input = tf.placeholder(tf.float32, [None, 84, 84, 4], name='obs_t')
+        # Placeholders for CNN
+        obs_t_input = tf.placeholder(tf.float32, [None, 84, 84,
+                                                  options.update_interval], name='obs_t')
         act_t_ph = tf.placeholder(tf.int32, [None], name='action')
         target_values = tf.placeholder(tf.float32, [None], name='value')
 
@@ -21,17 +22,10 @@ def build_train(encode, num_actions, optimizer, dnds,
         q_values = []
         writs = []
 
-        # Place holders for DND
-        hin = tf.placeholder(
-            tf.float32, [options.hin_size], name='key'
-        )
-        vin = tf.placeholder(
-            tf.float32, [], name='value'
-        )
-
-        epsize = tf.placeholder(
-            tf.int32, [num_actions], name='epsize'
-        )
+        # Placeholders for DND
+        hin = tf.placeholder(tf.float32, [options.hin_size], name='key')
+        vin = tf.placeholder(tf.float32, [], name='value')
+        epsize = tf.placeholder(tf.int32, [num_actions], name='epsize')
 
         for i, dnd in enumerate(dnds):
             with tf.name_scope('DND'):

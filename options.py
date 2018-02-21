@@ -1,4 +1,13 @@
 import os
+CARTPOLE_MODEL = {
+    'cnns': [],
+    'fcs': [64, 64]
+}
+
+PONG_MODEL = {
+    'cnns': [(32, 8, 4), (64, 4, 2), (64, 3, 1)],
+    'fcs': [512]
+}
 
 
 class Options:
@@ -25,6 +34,15 @@ class Options:
         # absolute logdir
         self.logdir = os.path.join(
             os.path.dirname(__file__), 'logs/' + args.logdir)
+
+        # Neural Networks
+        if self.environment == 'PongDeterministic-v4':
+            self.model = PONG_MODEL
+        elif self.environment == 'CartPole-v0':
+            self.model = CARTPOLE_MODEL
+
+        self.convs = self.models['cnns']
+        self.fcs = self.models['fcs']
 
         # FOR AGENT LEARNING
         self.rep_buffer_size = 10 ** 5
