@@ -7,7 +7,7 @@ import numpy as np
 import box_constants
 import atari_constants
 
-from lightsaber.tensorflow.log import TfBoardLogger
+from lightsaber.tensorflow.log import TfBoardLogger, dump_constants
 from lightsaber.rl.explorer import LinearDecayExplorer, ConstantExplorer
 from lightsaber.rl.replay_buffer import NECReplayBuffer
 from lightsaber.rl.env_wrapper import EnvWrapper
@@ -64,6 +64,9 @@ def main():
             return np.array(state, dtype=np.float32) / 255.0
         # (window_size, H, W) -> (H, W, window_size)
         phi = lambda state: np.transpose(state, [1, 2, 0])
+
+    # save constant variables
+    dump_constants(constants, os.path.join(outdir, 'constants.json'))
 
     # exploration
     if constants.EXPLORATION_TYPE == 'linear':
