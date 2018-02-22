@@ -13,6 +13,7 @@ CONVS = [(32, 8, 4), (64, 4, 2), (64, 3, 1)]
 FCS = []
 
 LR = 2.5e-4
+OPTIMIZER = 'rmsprop'
 MOMENTUM = 0.95
 EPSILON = 1e-2
 GRAD_CLIPPING = 10.0
