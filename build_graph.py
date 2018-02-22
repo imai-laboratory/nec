@@ -2,27 +2,30 @@ import tensorflow as tf
 import lightsaber.tensorflow.util as util
 
 
-def build_train(encode, num_actions, optimizer, dnds,
-                options, scope='DEEPQ',
-                run_options=None, run_metadata=None,
+def build_train(encode,
+                num_actions,
+                optimizer,
+                dnds,
+                state_shape,
+                key_size,
+                grad_clipping=10.0,
+                scope='nec',
+                run_options=None,
+                run_metadata=None,
                 reuse=None):
     with tf.variable_scope(scope, reuse=reuse):
-        # TODO: remove
-        assert run_options is not None
-        assert run_metadata is not None
-
-        # Placeholders for CNN
-        obs_t_input = tf.placeholder(tf.float32, [None] + list(options.in_shape), name='obs_t')
+        # placeholders for CNN
+        obs_t_input = tf.placeholder(tf.float32, [None] + state_shape, name='obs_t')
         act_t_ph = tf.placeholder(tf.int32, [None], name='action')
         target_values = tf.placeholder(tf.float32, [None], name='value')
 
-        encoded_state = encode(obs_t_input, num_actions, scope='encode')
+        encoded_state = encode(obs_t_input, scope='encode')
         encode_vars = util.scope_vars(util.absolute_scope_name('encode'))
         q_values = []
         writs = []
 
-        # Placeholders for DND
-        hin = tf.placeholder(tf.float32, [options.hin_size], name='key')
+        # placeholders for DND
+        hin = tf.placeholder(tf.float32, [key_size], name='key')
         vin = tf.placeholder(tf.float32, [], name='value')
         epsize = tf.placeholder(tf.int32, [num_actions], name='epsize')
 
@@ -57,12 +60,14 @@ def build_train(encode, num_actions, optimizer, dnds,
             q_t * tf.one_hot(act_t_ph, num_actions), axis=1
         )
 
-        # GRADIENTS
-        errors = tf.reduce_sum(tf.square(target_values - q_t_selected))
-        gradients = optimizer.compute_gradients(errors, var_list=encode_vars)
+        # td error
+        error = tf.reduce_sum(tf.square(target_values - q_t_selected))
+
+        # gradients
+        gradients = optimizer.compute_gradients(error, var_list=encode_vars)
         for i, (grad, var) in enumerate(gradients):
             if grad is not None:
-                gradients[i] = (tf.clip_by_norm(grad, options.grad_norm_clipping), var)
+                gradients[i] = (tf.clip_by_norm(grad, grad_clipping), var)
         optimize_expr = optimizer.apply_gradients(gradients)
 
         actions = tf.reshape(tf.argmax(q_t, axis=1), [-1])
@@ -77,7 +82,7 @@ def build_train(encode, num_actions, optimizer, dnds,
             inputs=[
                 obs_t_input, act_t_ph, target_values, epsize
             ],
-            outputs=errors,
+            outputs=error,
             updates=[optimize_expr],
             options=run_options,
             run_metadata=run_metadata
@@ -86,7 +91,7 @@ def build_train(encode, num_actions, optimizer, dnds,
         writers = [
             util.function(
                 inputs=[hin, vin, epsize],
-                outputs=w,
+                outputs=w
             )
             for w in writs
         ]
