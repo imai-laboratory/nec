@@ -7,7 +7,7 @@ import numpy as np
 import box_constants
 import atari_constants
 
-from lightsaber.tensorflow.log import TfBoardLogger, dump_constants
+from lightsaber.tensorflow.log import TfBoardLogger, JsonLogger, dump_constants
 from lightsaber.rl.explorer import LinearDecayExplorer, ConstantExplorer
 from lightsaber.rl.replay_buffer import NECReplayBuffer
 from lightsaber.rl.env_wrapper import EnvWrapper
@@ -127,9 +127,15 @@ def main():
 
     # tensorboard logger
     train_writer = tf.summary.FileWriter(logdir, sess.graph)
-    logger = TfBoardLogger(train_writer)
-    logger.register('reward', dtype=tf.int32)
-    end_episode = lambda r, t, e: logger.plot('reward', r, t)
+    tflogger = TfBoardLogger(train_writer)
+    tflogger.register('reward', dtype=tf.int32)
+    # json logger
+    jsonlogger = JsonLogger(os.path.join(outdir, 'reward.json'))
+
+    # callback on the end of episode
+    def end_episode(reward, step, episode):
+        tflogger.plot('reward', reward, step)
+        jsonlogger.plot(reward=reward, step=step, episode=episode)
 
     trainer = Trainer(
         env=env,
