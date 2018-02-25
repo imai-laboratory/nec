@@ -6,16 +6,16 @@ class DND:
     TensorFlow impelementation of DND.
     DND will be created per actions.
     '''
-    def __init__(self, keysize=512, capacity=10 ** 5, p=50, lr=0.1):
+    def __init__(self, keysize=512, capacity=10 ** 5, p=50, lr=0.1, scope='dnd'):
         self.capacity = capacity
         self.lr = lr
         self.p = p
         self.keysize = keysize  # TODO: check input size
+        self.scope = scope
 
     def _init_vars(self):
-        with tf.name_scope('MEMORY_MODULE'):
-            # TODO: change
-            with tf.device('/cpu:0'):
+        with tf.name_scope(self.scope):
+            with tf.device('/gpu:0'):
                 self.curr_epsize = tf.Variable(self.p, dtype=tf.float32)
                 self.memory_keys = tf.Variable(
                     tf.zeros([self.capacity, self.keysize], dtype=tf.float32),
