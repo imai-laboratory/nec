@@ -27,7 +27,7 @@ run_metadata = tf.RunMetadata()
 def main():
     date = datetime.now().strftime("%Y%m%d%H%M%S")
     parser = argparse.ArgumentParser()
-    parser.add_argument('--env', type=str, default='CartPole-v1')
+    parser.add_argument('--env', type=str, default='CartPole-v0')
     parser.add_argument('--outdir', type=str, default=date)
     parser.add_argument('--logdir', type=str, default=date)
     parser.add_argument('--gpu', type=int, default=0)
@@ -100,7 +100,8 @@ def main():
         dnd = DND(
             constants.DND_KEY_SIZE,
             constants.DND_CAPACITY,
-            constants.DND_P
+            constants.DND_P,
+            scope='dnd{}'.format(i)
         )
         dnd._init_vars()
         dnds.append(dnd)

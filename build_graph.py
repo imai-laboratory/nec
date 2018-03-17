@@ -39,11 +39,7 @@ def build_train(encode,
                     tf.expand_dims(encoded_state, axis=1),
                     [1, dnd.p, 1]
                 )
-                distances = tf.reduce_sum(
-                    # tf.square(tf.stop_gradient(keys) - expanded_encode),
-                    tf.square(keys - expanded_encode),
-                    axis=2
-                )
+                distances = tf.reduce_sum(tf.square(keys - expanded_encode), axis=2)
                 k = 1.0 / (distances + 10e-20)
                 weights = (k /
                            tf.reshape(
@@ -64,7 +60,10 @@ def build_train(encode,
         error = tf.reduce_sum(tf.square(target_values - q_t_selected))
 
         # gradients
-        gradients = optimizer.compute_gradients(error, var_list=encode_vars)
+        trained_vars = encode_vars
+        for i in range(num_actions):
+            trained_vars += util.scope_vars('dnd{}/KEYS'.format(i))
+        gradients = optimizer.compute_gradients(error, var_list=trained_vars)
         for i, (grad, var) in enumerate(gradients):
             if grad is not None:
                 gradients[i] = (tf.clip_by_norm(grad, grad_clipping), var)

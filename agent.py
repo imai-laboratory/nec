@@ -71,17 +71,22 @@ class Agent(object):
         self.run_options = run_options
         self.run_metadata = run_metadata
 
+        if constants.OPTIMIZER == 'adam':
+            optimizer = tf.train.AdamOptimizer(constants.LR)
+        else:
+            optimizer = tf.train.RMSPropOptimizer(
+                learning_rate=constants.LR,
+                momentum=constants.MOMENTUM,
+                epsilon=constants.EPSILON
+            )
+
         self._act,\
         self._write,\
         self._train = build_graph.build_train(
             encode=network,
             num_actions=self.num_actions,
             state_shape=state_shape,
-            optimizer=tf.train.RMSPropOptimizer(
-                learning_rate=constants.LR,
-                momentum=constants.MOMENTUM,
-                epsilon=constants.EPSILON
-            ),
+            optimizer=optimizer,
             dnds=self.dnds,
             key_size=constants.DND_KEY_SIZE,
             grad_clipping=constants.GRAD_CLIPPING,
