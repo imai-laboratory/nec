@@ -37,7 +37,7 @@ def main():
     args = parser.parse_args()
 
     # learned model path settings
-    outdir = os.path.join(os.path.dirname(__file__), 'results_' + args.outdir)
+    outdir = os.path.join(os.path.dirname(__file__), 'results/' + args.outdir)
     if not os.path.exists(outdir):
         os.makedirs(outdir)
     # log path settings
