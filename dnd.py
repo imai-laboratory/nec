@@ -5,20 +5,34 @@ class DND:
     '''
     TensorFlow impelementation of DND.
     DND will be created per actions.
+    The variables included in this class are described below.
+    memory_keys: a key to accsess memory.
+    memory_values: a valued stored in memory with index pared with memory_keys.
+    memory_ages: memory ages for each entry. used to discard the unused
+    locations.
     '''
     def __init__(
             self, keysize=512, capacity=10 ** 5,
             p=50, lr=0.1, scope='dnd', device='/cpu:0'
     ):
+        '''
+        ARGS:
+            capacity(int): capacity for dnd memory.
+            lr (float32): learning rate
+            p (int): the number of keys to sample from K-NN
+            device(str): a device on which to load dnds
+        '''
         self.capacity = capacity
         self.lr = lr
         self.p = p
-        self.keysize = keysize  # TODO: check input size
+        self.keysize = keysize
         self.scope = scope
+        self.device = device
 
     def _init_vars(self):
         with tf.name_scope(self.scope):
-            with tf.device('/cpu:0'):
+            with tf.device(self.device):
+                # set self.device to gpu to load dnds to gpu
                 self.curr_epsize = tf.Variable(self.p, dtype=tf.float32)
                 self.memory_keys = tf.Variable(
                     tf.zeros([self.capacity, self.keysize], dtype=tf.float32),
@@ -34,26 +48,44 @@ class DND:
                 )
 
     def _build_network(self, readerin, hin, vin, epsize):
+        ''' a function to build reader and writer networks.
+        this function will only be called once.
+        '''
         self.writer = self._build_writer(hin, vin, epsize)
         self.reader = self._build_reader(readerin, epsize)
         return self.reader, self.writer
 
     def _build_reader(self, h, epsize):
+        ''' a fucntion to build reader network. 
+        this function will only be called once.
+        ARGS:
+            h: encoded states. its' shape is (batch_size, keysize)
+        '''
         with tf.name_scope('lookup'):
+            # only take into account the current epsize
+            # both shapes are (epsize, keysize)
             keys = self.memory_keys[:epsize]
-            tiled_keys = tf.tile([keys], [tf.shape(h)[0], 1, 1])
-            expanded_h = tf.expand_dims(h, axis=1)
-            distances = tf.reduce_sum(
-                tf.square(
-                    tiled_keys - tf.tile(
-                        expanded_h, [1, epsize, 1]
-                    )
-                ), axis=2
-            )
             values = self.memory_values[:epsize]
+
+            # set both shapes to (batch_size, epsize, keysize)
+            # and compute distances
+            # [keys].shape: (1, epsize, keysize)
+            # tf.shape(h): batchsize
+            tiled_keys = tf.tile([keys], [tf.shape(h)[0], 1, 1])
+
+            # h.shape: (batchsize, keysize)
+            expanded_h = tf.expand_dims(h, axis=1)
+            tiled_eh = tf.tile(expanded_h, [1, epsize, 1])
+
+            # compute distances
+            distances = tf.reduce_sum(
+                tf.square(tiled_keys - tiled_eh),
+                axis=2
+            )
 
             # negate distances to get the k closest keys
             _, indices = tf.nn.top_k(-distances, k=self.p)  # indecies (?, 10)
+
             # distances (?, ?) batchsize, memsize
             # get p distances
             hit_keys = tf.nn.embedding_lookup(keys, indices)
@@ -73,6 +105,9 @@ class DND:
         return hit_keys, hit_values, update_ages
 
     def _build_writer(self, hin, vin, epsize):
+        ''' a fucntion to build writer network. 
+        this function will only be called once per instance.
+        '''
         with tf.name_scope('write'):
             # memory_keys (capacity, keysize)
             # hin (keysize) -> (capacity, keysize)  broadcasted
