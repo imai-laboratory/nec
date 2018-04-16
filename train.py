@@ -2,6 +2,7 @@ import argparse
 import gym
 import cv2
 import os
+import copy
 import tensorflow as tf
 import numpy as np
 import box_constants
@@ -12,6 +13,7 @@ from lightsaber.rl.explorer import LinearDecayExplorer, ConstantExplorer
 from lightsaber.rl.replay_buffer import NECReplayBuffer
 from lightsaber.rl.env_wrapper import EnvWrapper
 from lightsaber.rl.trainer import Trainer
+from lightsaber.rl.evaluator import Evaluator, Recorder
 
 from actions import get_action_space
 from network import make_network
@@ -33,6 +35,8 @@ def main():
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--load', type=str, default=None)
     parser.add_argument('--render', action='store_true')
+    parser.add_argument('--eval-render', action='store_true')
+    parser.add_argument('--record', action='store_true')
     parser.add_argument('--demo', action='store_true')
     args = parser.parse_args()
 
@@ -98,10 +102,10 @@ def main():
     dnds = []
     for i in range(len(actions)):
         dnd = DND(
-            constants.DND_KEY_SIZE,
-            constants.DND_CAPACITY,
-            constants.DND_P,
-            constants.DEVICE
+            keysize=constants.DND_KEY_SIZE,
+            capacity=constants.DND_CAPACITY,
+            p=constants.DND_P,
+            device=constants.DEVICE,
             scope='dnd{}'.format(i)
         )
         dnd._init_vars()
@@ -130,14 +134,32 @@ def main():
     # tensorboard logger
     train_writer = tf.summary.FileWriter(logdir, sess.graph)
     tflogger = TfBoardLogger(train_writer)
-    tflogger.register('reward', dtype=tf.int32)
+    tflogger.register('reward', dtype=tf.float32)
+    tflogger.register('eval_reward', dtype=tf.float32)
     # json logger
-    jsonlogger = JsonLogger(os.path.join(outdir, 'reward.json'))
+    trainlogger = JsonLogger(os.path.join(outdir, 'train.json'))
+    evallogger = JsonLogger(os.path.join(outdir, 'evaluation.json'))
 
     # callback on the end of episode
     def end_episode(reward, step, episode):
         tflogger.plot('reward', reward, step)
-        jsonlogger.plot(reward=reward, step=step, episode=episode)
+        trainlogger.plot(reward=reward, step=step, episode=episode)
+
+    evaluator = Evaluator(
+        env=copy.deepcopy(env),
+        state_shape=state_shape[:-1],
+        state_window=constants.STATE_WINDOW,
+        eval_episodes=constants.EVAL_EPISODES,
+        recorder=Recorder(outdir) if args.record else None,
+        record_episodes=constants.RECORD_EPISODES,
+        render=args.eval_render
+    )
+    def should_eval(step, episode):
+        return step > 0 and step % constants.EVAL_INTERVAL == 0
+    def end_eval(step, episode, rewards):
+        mean_rewards = np.mean(rewards)
+        tflogger.plot('eval_reward', mean_rewards, step)
+        evallogger.plot(reward=mean_rewards, step=step, episode=episode)
 
     trainer = Trainer(
         env=env,
@@ -147,7 +169,10 @@ def main():
         state_window=constants.STATE_WINDOW,
         final_step=constants.FINAL_STEP,
         end_episode=end_episode,
-        training=not args.demo
+        training=not args.demo,
+        evaluator=evaluator,
+        should_eval=should_eval,
+        end_eval=end_eval
     )
     trainer.start()
 
