@@ -140,7 +140,7 @@ class Agent(object):
         self.last_obs = obs
         self.last_encoded_state = encoded_state
         self.last_action = action
-        return action
+        return self.actions[action]
 
     def stop_episode(self, obs, reward, training=True):
         self.cache.add(

@@ -72,6 +72,7 @@ class DND:
             # [keys].shape: (1, epsize, keysize)
             # tf.shape(h): batchsize
             # tiled_keys = tf.tile([keys], [tf.shape(h)[0], 1, 1])
+            # expanded_keys: (1, epsize, keys)
             expanded_keys = tf.expand_dims(keys, axis=0)
 
             # h.shape: (batchsize, keysize)
