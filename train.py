@@ -101,7 +101,7 @@ def main():
             constants.DND_KEY_SIZE,
             constants.DND_CAPACITY,
             constants.DND_P,
-            constants.DEVICE
+            device=constants.DEVICES[i],
             scope='dnd{}'.format(i)
         )
         dnd._init_vars()
