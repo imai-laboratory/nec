@@ -22,5 +22,8 @@ DND_CAPACITY = 5 * 10 ** 5
 DND_P = 50
 DND_KEY_SIZE = 512
 
-DEVICE = '/gpu:0'
 DEVICES = ['/gpu:0', '/gpu:1', '/gpu:2']
+
+EVAL_EPISODES = 10
+EVAL_INTERVAL = 10 ** 4
+RECORD_EPISODES = 3

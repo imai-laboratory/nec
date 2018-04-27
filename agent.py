@@ -116,24 +116,28 @@ class Agent(object):
         values = values[0]
 
         # epsilon greedy exploration
-        action = self.exploration.select_action(self.t, action, self.num_actions)
+        if training:
+            action = self.exploration.select_action(
+                self.t, action, self.num_actions)
         value = values[action]
 
         if training and self.t > self.t > self.constants.LEARNING_START_STEP:
             if self.t % self.constants.UPDATE_INTERVAL == 0:
-                obs_t, actions, values = self.replay_buffer.sample(self.constants.BATCH_SIZE)
+                obs_t, actions, values = self.replay_buffer.sample(
+                    self.constants.BATCH_SIZE)
                 td_errors = self._train(obs_t, actions, values, self.get_epsize())
 
-        if self.last_obs is not None:
-            self.cache.add(
-                self.last_obs,
-                self.last_action,
-                reward,
-                self.last_encoded_state
-            )
+        if training:
+            if self.last_obs is not None:
+                self.cache.add(
+                    self.last_obs,
+                    self.last_action,
+                    reward,
+                    self.last_encoded_state
+                )
 
-        if self.t_in_episode >= self.constants.N_STEP:
-            self.append_experience(value)
+            if self.t_in_episode >= self.constants.N_STEP:
+                self.append_experience(value)
 
         self.t += 1
         self.t_in_episode += 1
@@ -143,14 +147,15 @@ class Agent(object):
         return action
 
     def stop_episode(self, obs, reward, training=True):
-        self.cache.add(
-            self.last_obs,
-            self.last_action,
-            reward,
-            self.last_encoded_state
-        )
-        while training and self.cache.size() > 0:
-            self.append_experience(0)
+        if training:
+            self.cache.add(
+                self.last_obs,
+                self.last_action,
+                reward,
+                self.last_encoded_state
+            )
+            while self.cache.size() > 0:
+                self.append_experience(0)
         self.last_obs = None
         self.last_action = 0
         self.t_in_episode = 0
