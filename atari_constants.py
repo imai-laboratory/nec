@@ -23,3 +23,4 @@ DND_P = 50
 DND_KEY_SIZE = 512
 
 DEVICE = '/gpu:0'
+DEVICES = ['/gpu:0', '/gpu:1', '/gpu:2']
