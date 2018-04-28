@@ -71,15 +71,19 @@ class DND:
             # and compute distances
             # [keys].shape: (1, epsize, keysize)
             # tf.shape(h): batchsize
-            tiled_keys = tf.tile([keys], [tf.shape(h)[0], 1, 1])
+            # tiled_keys = tf.tile([keys], [tf.shape(h)[0], 1, 1])
+            # expanded_keys: (1, epsize, keys)
+            expanded_keys = tf.expand_dims(keys, axis=0)
 
             # h.shape: (batchsize, keysize)
             expanded_h = tf.expand_dims(h, axis=1)
+            # expanded_h.shape: (batch_size, 1, keysize)
+            # tiled_eh.shape: (batch_size, epsize, keysize)
             tiled_eh = tf.tile(expanded_h, [1, epsize, 1])
 
             # compute distances
             distances = tf.reduce_sum(
-                tf.square(tiled_keys - tiled_eh),
+                tf.square(expanded_keys - tiled_eh),
                 axis=2
             )
 
@@ -116,12 +120,12 @@ class DND:
                 distance = tf.norm(distvec, axis=1)  # (capacity)
                 index = tf.argmin(distance, axis=0)  # scalar
                 mindist = distance[index]
-    
+
             with tf.name_scope('BODY1'):
                 # check if distance is the same
                 new_value = self.lr * (vin - self.memory_values[index])
                 update_val = tf.assign(self.memory_values[index], new_value)
-    
+
             with tf.name_scope('BODY2'):
                 with tf.name_scope('IF'):
                     update_age = tf.assign(  # TODO: remove this
@@ -137,14 +141,14 @@ class DND:
                     deps = tf.group(
                         *[update_age, key_append, val_append]
                     )
-    
+
                     with tf.control_dependencies([deps]):
                         grouped_appends = tf.group(
                             tf.assign_add(
                                 self.curr_epsize, 1
                             )
                         )
-    
+
                 with tf.name_scope('ELSE'):
                     oldest_idx = tf.argmax(self.memory_ages)
                     key_update = tf.assign(
@@ -156,13 +160,13 @@ class DND:
                     grouped_updates = tf.group(
                         *[key_update, val_update]
                     )
-    
+
             cond_dist_eq = tf.cond(
                 tf.equal(mindist, 0),
                 lambda: update_val, lambda: .0,
                 name='COND1'
             )
-    
+
             with tf.control_dependencies([cond_dist_eq]):
                 # pev operation followed by below
                 cond_capa_less = tf.cond(
