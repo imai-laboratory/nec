@@ -22,11 +22,6 @@ from dnd import DND
 from datetime import datetime
 from tensorflow.python.client import timeline
 
-from pyvirtualdisplay import Display
-# virtual display settings to render gym
-v_display = Display(visible=0, size=(1400, 900))
-v_display.start()
-
 run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
 run_metadata = tf.RunMetadata()
 
