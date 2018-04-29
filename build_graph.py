@@ -1,5 +1,4 @@
 import tensorflow as tf
-import lightsaber.tensorflow.util as util
 
 
 def build_train(encode,
@@ -20,7 +19,8 @@ def build_train(encode,
         target_values = tf.placeholder(tf.float32, [None], name='value')
 
         encoded_state = encode(obs_t_input, scope='encode')
-        encode_vars = util.scope_vars(util.absolute_scope_name('encode'))
+        encode_vars = tf.get_collection(
+            tf.GraphKeys.TRAINABLE_VARIABLES, '{}/encode'.format(scope))
         q_values = []
         writs = []
 
@@ -62,7 +62,8 @@ def build_train(encode,
         # gradients
         trained_vars = encode_vars
         for i in range(num_actions):
-            trained_vars += util.scope_vars('dnd{}/KEYS'.format(i))
+            trained_vars += tf.get_collection(
+                tf.GraphKeys.TRAINABLE_VARIABLES, 'dnd{}/KEYS'.format(i))
         gradients = optimizer.compute_gradients(error, var_list=trained_vars)
         for i, (grad, var) in enumerate(gradients):
             if grad is not None:
@@ -70,29 +71,37 @@ def build_train(encode,
         optimize_expr = optimizer.apply_gradients(gradients)
 
         actions = tf.reshape(tf.argmax(q_t, axis=1), [-1])
-        act = util.function(
-            inputs=[obs_t_input, epsize],
-            outputs=[actions, q_t, encoded_state],
-            options=run_options,
-            run_metadata=run_metadata
-        )
+        def act(obs, ep):
+            feed_dict = {
+                obs_t_input: obs,
+                epsize: ep
+            }
+            return tf.get_default_session().run(
+                [actions, q_t, encoded_state], feed_dict=feed_dict,
+                options=run_options, run_metadata=run_metadata)
 
-        train = util.function(
-            inputs=[
-                obs_t_input, act_t_ph, target_values, epsize
-            ],
-            outputs=error,
-            updates=[optimize_expr],
-            options=run_options,
-            run_metadata=run_metadata
-        )
+        def train(obs, act, target, ep):
+            feed_dict = {
+                obs_t_input: obs,
+                act_t_ph: act,
+                target_values: target,
+                epsize: ep
+            }
+            error_val, _ = tf.get_default_session().run(
+                [error, optimize_expr], feed_dict=feed_dict,
+                options=run_options, run_metadata=run_metadata)
+            return error_val
 
-        writers = [
-            util.function(
-                inputs=[hin, vin, epsize],
-                outputs=w
-            )
-            for w in writs
-        ]
+        writers = []
+        for i in range(num_actions):
+            def writer_func(h, v, ep):
+                feed_dict = {
+                    hin: h,
+                    vin: v,
+                    epsize: ep
+                }
+                sess = tf.get_default_session()
+                return sess.run(writs[i], feed_dict=feed_dict)
+            writers.append(writer_func)
 
         return act, writers, train
