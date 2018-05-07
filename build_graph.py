@@ -94,14 +94,14 @@ def build_train(encode,
 
         writers = []
         for i in range(num_actions):
-            def writer_func(h, v, ep):
+            def writer_func(index, h, v, ep):
                 feed_dict = {
                     hin: h,
                     vin: v,
                     epsize: ep
                 }
                 sess = tf.get_default_session()
-                return sess.run(writs[i], feed_dict=feed_dict)
-            writers.append(writer_func)
+                return sess.run(writs[index], feed_dict=feed_dict)
+            writers.append(lambda h, v, ep, index=i: writer_func(index, h, v, ep))
 
         return act, writers, train
