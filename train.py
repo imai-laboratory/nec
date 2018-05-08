@@ -8,12 +8,11 @@ import numpy as np
 import box_constants
 import atari_constants
 
-from lightsaber.tensorflow.log import TfBoardLogger, JsonLogger, dump_constants
-from lightsaber.rl.explorer import LinearDecayExplorer, ConstantExplorer
-from lightsaber.rl.replay_buffer import NECReplayBuffer
-from lightsaber.rl.env_wrapper import EnvWrapper
-from lightsaber.rl.trainer import Trainer
-from lightsaber.rl.evaluator import Evaluator, Recorder
+from rlsaber.log import TfBoardLogger, JsonLogger, dump_constants
+from rlsaber.explorer import LinearDecayExplorer, ConstantExplorer
+from rlsaber.replay_buffer import NECReplayBuffer
+from rlsaber.env import EnvWrapper
+from rlsaber.trainer import Trainer, Evaluator, Recorder
 
 from actions import get_action_space
 from network import make_network
