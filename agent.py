@@ -104,6 +104,7 @@ class Agent(object):
     # append state transition to DND and replay memory
     def append_experience(self, value):
         state, action, encode, R = self.cache.pop(value)
+        state = np.array(state * 255, dtype=np.uint8)
         self.replay_buffer.append(obs_t=state, action=action, value=R)
         self._write[action](encode, R, self.get_epsize())
 
@@ -125,6 +126,7 @@ class Agent(object):
             if self.t % self.constants.UPDATE_INTERVAL == 0:
                 obs_t, actions, values = self.replay_buffer.sample(
                     self.constants.BATCH_SIZE)
+                obs_t = np.array(obs_t / 255., dtype=np.float32)
                 td_errors = self._train(obs_t, actions, values, self.get_epsize())
 
         if training:
