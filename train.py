@@ -63,6 +63,7 @@ def main():
         def state_preprocess(state):
             for i, cf in enumerate(norm_coeffs):
                 state[i] /= cf
+            return state
         # (window_size, dim) -> (dim, window_size)
         phi = lambda state: np.transpose(state, [1, 0])
     # atari environment
