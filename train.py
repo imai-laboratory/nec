@@ -50,7 +50,19 @@ def main():
         constants = box_constants
         actions = range(env.action_space.n)
         state_shape = [env.observation_space.shape[0], constants.STATE_WINDOW]
-        state_preprocess = lambda state: state
+        # state.shape: (dim)
+        '''
+        State shape of cartpole v0
+        Num Observation Min Max
+        0 Cart Position   -2.4    2.4
+        1 Cart Velocity   -3.5    3.5
+        2 Pole Angle  ~ -41.8   ~ 41.8
+        3 Pole Velocity At Tip    -3.5  3.5
+        '''
+        norm_coeffs = [2.4, 3.5, 41.8, 3.5]
+        def state_preprocess(state):
+            for i, cf in enumerate(norm_coeffs):
+                state[i] /= cf
         # (window_size, dim) -> (dim, window_size)
         phi = lambda state: np.transpose(state, [1, 0])
     # atari environment
@@ -96,12 +108,15 @@ def main():
 
     # create DNDs
     dnds = []
+    # TODO: remove this
+    devices = ['/gpu:0', '/gpu:0', '/gpu:1', '/gpu:1', '/gpu:1']
+
     for i in range(len(actions)):
         dnd = DND(
             constants.DND_KEY_SIZE,
             constants.DND_CAPACITY,
             constants.DND_P,
-            constants.DEVICE
+            device=devices[i],
             scope='dnd{}'.format(i)
         )
         dnd._init_vars()
